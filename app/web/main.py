@@ -192,14 +192,19 @@ def update_status(post_id: str, payload: StatusUpdate, username: str = Depends(v
 
 class DraftEdit(BaseModel):
     long_post: str
+    short_post: Optional[str] = None
     sniper_reply: str
 
 
 @app.post("/api/drafts/{post_id}/save")
 def save_draft(post_id: str, payload: DraftEdit, username: str = Depends(verify_credentials)):
     conn = get_conn()
-    conn.execute("UPDATE drafts SET long_post = ?, sniper_reply = ? WHERE post_id = ?",
-                 (payload.long_post, payload.sniper_reply, post_id))
+    if payload.short_post is not None:
+        conn.execute("UPDATE drafts SET long_post = ?, short_post = ?, sniper_reply = ? WHERE post_id = ?",
+                     (payload.long_post, payload.short_post, payload.sniper_reply, post_id))
+    else:
+        conn.execute("UPDATE drafts SET long_post = ?, sniper_reply = ? WHERE post_id = ?",
+                     (payload.long_post, payload.sniper_reply, post_id))
     conn.commit()
     conn.close()
     return {"ok": True}

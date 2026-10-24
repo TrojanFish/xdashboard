@@ -23,7 +23,13 @@ class SynthesizedDraft(BaseModel):
         "Asymmetric Trade Breakdown",
         "Repo Teardown & Production Verdict",
     ]
+    content_tier: Literal[
+        "FLASH_PUNCH",
+        "DEBATE_ROUNDTABLE",
+        "DEEP_DIVE_MEMO"
+    ] = Field(description="Content tier assessed based on information density: FLASH_PUNCH for fast metrics/breaking tools (60-120 words), DEBATE_ROUNDTABLE for contrarian clashes (150-220 words), DEEP_DIVE_MEMO for architectural analysis (280-400 words).")
     hook_options: List[str] = Field(description="3 high-converting 2-line hooks (pain point attack, data shock, or commercial SaaS alternative thesis)")
+    short_post: str = Field(description="60-120 words punchy short-form body (excluding hook). Zero filler, direct takeaway, high read-through rate.")
     long_form_body: str = Field(description="250-400 words X Long-form body (excluding hook). Crisp line breaks, bullet points, synthesizing the core architecture, real-world utility, production tradeoffs, and your personal verdict.")
     reply_sniper_text: str = Field(description="60-90 words ultra-dense insight paragraph designed to reply under big X accounts discussing this topic to steal impressions and gain verified followers.")
     x_search_query: str = Field(description='Ready-to-use X advanced search query to find recent viral tweets on this topic, e.g.: ("OpenShell" OR "AI runtime") min_faves:30 -filter:replies lang:en')

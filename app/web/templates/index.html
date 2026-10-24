@@ -96,6 +96,7 @@
 let drafts = [];
 let currentId = null;
 let selectedHookIdx = 0;
+let currentFormat = 'long'; // 'long' (深度长推) | 'short' (极简短推)
 let filters = { category: 'ALL', status: 'pending' };
 let appConfig = { x_handle: '@YourHandle', has_gemini_key: true };
 
@@ -182,6 +183,14 @@ function renderFeedList() {
             badgeColor = 'bg-sky-500/10 text-sky-400 border-sky-500/30';
         }
 
+        const tier = d.content_tier || 'DEEP_DIVE_MEMO';
+        let tierBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-indigo-500/10 text-indigo-400 border border-indigo-500/30">📜 深度长文</span>`;
+        if (tier === 'FLASH_PUNCH') {
+            tierBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-amber-500/10 text-amber-400 border border-amber-500/30">⚡ 极简短推</span>`;
+        } else if (tier === 'DEBATE_ROUNDTABLE') {
+            tierBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-rose-500/10 text-rose-400 border border-rose-500/30">🥊 争议圆桌</span>`;
+        }
+
         const metricsSnippet = isGithub
             ? `<div class="flex items-center gap-1.5 text-purple-300 font-mono text-xs">
                    <span>⭐ +${d.score} stars today</span>
@@ -192,9 +201,9 @@ function renderFeedList() {
                </div>`;
 
         const footerSnippet = isGithub
-            ? `<span>开源项目拆解</span>
+            ? `<div class="flex items-center gap-2"><span>开源拆解</span>${tierBadge}</div>
                <span class="text-purple-400 font-mono text-[10px]">${d.narrative_framework || 'Repo Teardown'}</span>`
-            : `<span>▲ ${d.score} · 💬 ${d.num_comments}</span>
+            : `<div class="flex items-center gap-2"><span>▲ ${d.score} · 💬 ${d.num_comments}</span>${tierBadge}</div>
                <span class="text-indigo-400 font-mono text-[10px]">${d.narrative_framework || ''}</span>`;
 
         return `
@@ -214,6 +223,12 @@ function renderFeedList() {
 function selectDraft(postId) {
     currentId = postId;
     selectedHookIdx = 0;
+    const item = drafts.find(d => d.post_id === currentId);
+    if (item && item.content_tier === 'FLASH_PUNCH') {
+        currentFormat = 'short';
+    } else {
+        currentFormat = 'long';
+    }
     renderFeedList();
     renderEditor();
 }
@@ -248,9 +263,16 @@ function renderEditor() {
     const sourceLabel = isGithub ? 'GitHub ↗' : 'Reddit ↗';
     const sourceClass = isGithub ? 'text-purple-400' : 'text-indigo-400';
 
-    // 组合完整的长推文（当前选中的 Hook + 正文）
+    // 格式与等级信息
+    const tier = item.content_tier || 'DEEP_DIVE_MEMO';
+    let tierText = '📜 建议深度长推（高书签权重）';
+    if (tier === 'FLASH_PUNCH') tierText = '⚡ 建议极简短推（高完播完转）';
+    else if (tier === 'DEBATE_ROUNDTABLE') tierText = '🥊 建议争议圆桌（引爆评论互动）';
+
+    // 组合当前选中格式的推文（Hook + 正文）
     const activeHook = hooks[selectedHookIdx] || "";
-    const fullTweetText = activeHook ? `${activeHook}\n\n${item.long_post || ''}` : (item.long_post || '');
+    const activeBody = (currentFormat === 'short' && item.short_post) ? item.short_post : (item.long_post || '');
+    const fullTweetText = activeHook ? `${activeHook}\n\n${activeBody}` : activeBody;
 
     document.getElementById('editorPane').innerHTML = `
         <div class="max-w-6xl mx-auto space-y-6">
@@ -271,7 +293,7 @@ function renderEditor() {
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                <!-- 左列：Hook + 长推 + 狙击 (7列) -->
+                <!-- 左列：Hook + 长短文 + 狙击 (7列) -->
                 <div class="lg:col-span-7 space-y-4">
                     <div>
                         <label class="text-xs font-mono uppercase text-zinc-400 block mb-2">1. 点击切换黄金前两行 (Hook Options)</label>
@@ -280,13 +302,25 @@ function renderEditor() {
 
                     <div>
                         <div class="flex items-center justify-between mb-2">
-                            <label class="text-xs font-mono uppercase text-zinc-400">2. X 深度长推完整合成稿 (支持手动微调)</label>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <label class="text-xs font-mono uppercase text-zinc-400">2. X 发帖文案</label>
+                                <!-- 长短模式切换分段按钮 -->
+                                <div class="flex bg-zinc-950 p-0.5 rounded-lg border border-zinc-800 text-xs">
+                                    <button type="button" onclick="switchFormat('short')" id="fmt-short" class="px-2.5 py-1 rounded-md transition flex items-center gap-1 ${currentFormat === 'short' ? 'bg-indigo-600 text-white font-medium shadow' : 'text-zinc-400 hover:text-white'}">
+                                        <span>⚡ 极简短推 (Short)</span>
+                                    </button>
+                                    <button type="button" onclick="switchFormat('long')" id="fmt-long" class="px-2.5 py-1 rounded-md transition flex items-center gap-1 ${currentFormat === 'long' ? 'bg-indigo-600 text-white font-medium shadow' : 'text-zinc-400 hover:text-white'}">
+                                        <span>📜 深度长文 (Long)</span>
+                                    </button>
+                                </div>
+                                <span class="text-[11px] font-mono text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded">${tierText}</span>
+                            </div>
                             <span id="wordCount" class="text-xs font-mono text-zinc-500"></span>
                         </div>
                         <textarea id="fullTweetBox" oninput="updateCount()" rows="13" class="w-full bg-zinc-900 border border-zinc-800 focus:border-indigo-500 rounded-xl p-4 text-sm text-zinc-100 leading-relaxed outline-none font-sans select-text">${fullTweetText}</textarea>
 
                         <div class="flex flex-wrap items-center gap-2 mt-3">
-                            <button onclick="copyFullPost()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2.5 rounded-lg">📋 复制完整长推</button>
+                            <button onclick="copyFullPost()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2.5 rounded-lg">📋 复制当前推文</button>
                             <button onclick="openXIntent()" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium px-4 py-2.5 rounded-lg border border-zinc-700">🚀 唤起 X 发帖页</button>
                             <button onclick="saveEdits()" class="ml-auto text-xs text-zinc-400 hover:text-white px-3 py-2">💾 保存修改</button>
                         </div>
@@ -381,10 +415,37 @@ function updateCount() {
     if (el) el.innerText = `${words} 词 / ${text.length} 字符`;
 }
 
+function switchFormat(fmt) {
+    currentFormat = fmt;
+    const item = drafts.find(d => d.post_id === currentId);
+    if (!item) return;
+
+    const btnShort = document.getElementById('fmt-short');
+    const btnLong = document.getElementById('fmt-long');
+    if (btnShort && btnLong) {
+        if (fmt === 'short') {
+            btnShort.className = 'px-2.5 py-1 rounded-md transition flex items-center gap-1 bg-indigo-600 text-white font-medium shadow';
+            btnLong.className = 'px-2.5 py-1 rounded-md transition flex items-center gap-1 text-zinc-400 hover:text-white';
+        } else {
+            btnShort.className = 'px-2.5 py-1 rounded-md transition flex items-center gap-1 text-zinc-400 hover:text-white';
+            btnLong.className = 'px-2.5 py-1 rounded-md transition flex items-center gap-1 bg-indigo-600 text-white font-medium shadow';
+        }
+    }
+
+    const hooks = item.hooks || [""];
+    const activeHook = hooks[selectedHookIdx] || "";
+    const activeBody = (fmt === 'short' && item.short_post) ? item.short_post : (item.long_post || '');
+    const box = document.getElementById('fullTweetBox');
+    if (box) {
+        box.value = activeHook ? `${activeHook}\n\n${activeBody}` : activeBody;
+        updateCount();
+    }
+}
+
 function copyFullPost() {
     const box = document.getElementById('fullTweetBox');
     navigator.clipboard.writeText(box.value);
-    showToast("📋 完整长推已复制到剪贴板！");
+    showToast(`📋 已复制${currentFormat === 'short' ? '极简短推' : '深度长文'}到剪贴板！`);
 }
 
 function copyText(elId, msg) {
@@ -423,15 +484,28 @@ async function markStatus(postId, newStatus) {
 }
 
 async function saveEdits() {
+    const item = drafts.find(d => d.post_id === currentId);
+    if (!item) return;
     const box = document.getElementById('fullTweetBox');
     const sniperReply = document.getElementById('sniperBox').value;
-    // 提取正文（去掉第一段 Hook 后存储或整篇保存）
     const parts = box.value.split('\n\n');
     const bodyOnly = parts.length > 1 ? parts.slice(1).join('\n\n') : box.value;
+
+    if (currentFormat === 'short') {
+        item.short_post = bodyOnly;
+    } else {
+        item.long_post = bodyOnly;
+    }
+    item.sniper_reply = sniperReply;
+
     await fetch(`/api/drafts/${currentId}/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ long_post: bodyOnly, sniper_reply: sniperReply })
+        body: JSON.stringify({ 
+            long_post: item.long_post || '', 
+            short_post: item.short_post || '', 
+            sniper_reply: sniperReply 
+        })
     });
     showToast("💾 已保存修改");
 }

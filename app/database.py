@@ -75,7 +75,9 @@ def init_db():
             worth_posting INTEGER DEFAULT 1,
             skip_reason TEXT,
             narrative_framework TEXT,
+            content_tier TEXT DEFAULT 'DEEP_DIVE_MEMO',
             hooks_json TEXT,
+            short_post TEXT,
             long_post TEXT,
             sniper_reply TEXT,
             x_search_query TEXT,
@@ -84,6 +86,14 @@ def init_db():
             FOREIGN KEY(post_id) REFERENCES raw_signals(post_id)
         )
     """)
+
+    # 动态平滑迁移：为已有数据库追加 content_tier 与 short_post 字段（零数据丢失）
+    c.execute("PRAGMA table_info(drafts)")
+    draft_cols = [col[1] for col in c.fetchall()]
+    if "content_tier" not in draft_cols:
+        c.execute("ALTER TABLE drafts ADD COLUMN content_tier TEXT DEFAULT 'DEEP_DIVE_MEMO'")
+    if "short_post" not in draft_cols:
+        c.execute("ALTER TABLE drafts ADD COLUMN short_post TEXT")
 
     # 预置默认监控源（使用 INSERT OR IGNORE 保证已有库平滑补全）
     default_sources = [
@@ -156,23 +166,25 @@ def save_signal_and_draft(signal: Dict[str, Any], draft_data: Dict[str, Any], pe
 
     c.execute("""
         INSERT OR REPLACE INTO drafts
-        (post_id, persona_id, status, worth_posting, skip_reason, narrative_framework, hooks_json, long_post, sniper_reply, x_search_query, card_json)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (post_id, persona_id, status, worth_posting, skip_reason, narrative_framework, content_tier, hooks_json, short_post, long_post, sniper_reply, x_search_query, card_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         signal["post_id"],
         persona_id,
         "pending" if draft_data["is_worth_posting"] else "archived",
         1 if draft_data["is_worth_posting"] else 0,
-        draft_data["skip_reason"],
-        draft_data["narrative_framework"],
-        json.dumps(draft_data["hook_options"], ensure_ascii=False),
-        draft_data["long_form_body"],
-        draft_data["reply_sniper_text"],
-        draft_data["x_search_query"],
+        draft_data.get("skip_reason", ""),
+        draft_data.get("narrative_framework", "Deep Dive"),
+        draft_data.get("content_tier", "DEEP_DIVE_MEMO"),
+        json.dumps(draft_data.get("hook_options", []), ensure_ascii=False),
+        draft_data.get("short_post", ""),
+        draft_data.get("long_form_body", ""),
+        draft_data.get("reply_sniper_text", ""),
+        draft_data.get("x_search_query", ""),
         json.dumps({
-            "title": draft_data["visual_card_title"],
-            "type": draft_data["visual_card_type"],
-            "metrics": draft_data["visual_card_metrics"]
+            "title": draft_data.get("visual_card_title", ""),
+            "type": draft_data.get("visual_card_type", "terminal_benchmark"),
+            "metrics": draft_data.get("visual_card_metrics", [])
         }, ensure_ascii=False)
     ))
     conn.commit()

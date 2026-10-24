@@ -91,7 +91,9 @@ Content snippet: {signal['selftext'][:600]}
                 "is_worth_posting": False,
                 "skip_reason": f"[Flash 初筛拦截] {triage.reason}",
                 "narrative_framework": "Contrarian Reality Check",
+                "content_tier": "FLASH_PUNCH",
                 "hook_options": [],
+                "short_post": "",
                 "long_form_body": "",
                 "reply_sniper_text": "",
                 "x_search_query": "",
@@ -116,9 +118,13 @@ Content snippet: {signal['selftext'][:600]}
 {signal['selftext'][:3500]}
 
 ### CRITICAL RULES FOR GITHUB CURATION WITH PERSONAL VERDICT:
-1. **NARRATIVE FRAMEWORK**: Select "Repo Teardown & Production Verdict".
+1. **NARRATIVE FRAMEWORK & TIER**:
+   - `narrative_framework`: Select "Repo Teardown & Production Verdict".
+   - `content_tier`: Assess information density. If it's a simple lightweight utility, use `FLASH_PUNCH`. If it's a deep framework, use `DEEP_DIVE_MEMO`.
 2. **THE HOOK**: Never write "Check out this repo". Instead, attack a painful problem or contrast it against expensive commercial SaaS (e.g., "Stop paying $X/month for...", "Most engineers deploying X don't realize this open-source repo just solved the latency bottleneck:").
-3. **ARCHITECTURE & UNDER THE HOOD**: Break down the core technical mechanism, stack (e.g. {signal['flair']}), and design tradeoffs in clean '•' bullets.
+3. **DUAL-FORMAT DRAFTING (CRUCIAL)**:
+   - `short_post`: Exactly 60-120 words. Ultra-punchy, single core problem solved, stack + star momentum, direct link/verdict. High read-through rate.
+   - `long_form_body`: Exactly 250-400 words. Deep architecture teardown in clean '•' bullets, production tradeoffs, compute economics, and personal production verdict. High bookmark magnet.
 4. **PERSONAL VERDICT & BUSINESS IMPLICATION (Your Unique Alpha)**:
    - Provide your sharp verdict: Is it production-ready or experimental?
    - What are the compute/unit economics?
@@ -147,12 +153,19 @@ Content snippet: {signal['selftext'][:600]}
 {comments_block}
 
 ### EXECUTION RULES (CRITICAL FOR X MONETIZATION & GROWTH)
-1. **NO REPOST TRACES**: Never mention "Reddit", "r/{signal['subreddit']}", or "a user posted". Write from first-person insider observation ("Engineers deploying X are hitting a wall...", "The smartest debate around $TICKER right now...").
-2. **BRIDGE AI & CAPITAL**: Even if the topic is pure AI coding, briefly connect it to compute economics, SaaS moats, or capex. Even if it's pure stock trading, dissect it with systematic/engineering rigor.
-3. **REPLY SNIPER + X SEARCH QUERY**:
+1. **CONTENT TIER & DUAL-FORMAT**:
+   - Set `content_tier`:
+     * `FLASH_PUNCH`: Rapid data point, single anomaly or breaking event (best for 60-120 words).
+     * `DEBATE_ROUNDTABLE`: Fierce community clash or bull vs bear dispute (best for 150-220 words).
+     * `DEEP_DIVE_MEMO`: Complex engineering post-mortem or multi-factor capital thesis (best for 280-400 words).
+   - Generate `short_post`: 60-120 words high-density punch for mobile reading.
+   - Generate `long_form_body`: 250-400 words comprehensive breakdown synthesizing main post + top comment pushbacks.
+2. **NO REPOST TRACES**: Never mention "Reddit", "r/{signal['subreddit']}", or "a user posted". Write from first-person insider observation ("Engineers deploying X are hitting a wall...", "The smartest debate around $TICKER right now...").
+3. **BRIDGE AI & CAPITAL**: Even if the topic is pure AI coding, briefly connect it to compute economics, SaaS moats, or capex. Even if it's pure stock trading, dissect it with systematic/engineering rigor.
+4. **REPLY SNIPER + X SEARCH QUERY**:
    - Craft `reply_sniper_text` (60-90 words) packed with the sharpest counter-intuitive data point from the comments so the user can drop it under big X influencers' posts to farm Verified followers.
    - Craft `x_search_query` using 1-2 core keywords/tickers from this topic + `min_faves:50 -filter:replies lang:en` so the user can 1-click find viral tweets to reply to right now.
-4. **BANNED AI SLOP WORDS**: Strictly forbidden: {persona['banned_words']}.
+5. **BANNED AI SLOP WORDS**: Strictly forbidden: {persona['banned_words']}.
 """
 
         resp = self._generate_with_fallback(prompt, SynthesizedDraft, FALLBACK_SYNTHESIS_MODELS, temperature=0.7)
