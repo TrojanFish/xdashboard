@@ -1,4 +1,5 @@
 import threading
+from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
 from app.config import settings
 from app.database import save_signal_and_draft
@@ -8,34 +9,56 @@ from app.engine.synthesizer import SynthesisEngine
 
 _scan_lock = threading.Lock()
 
+_scan_state = {
+    "running": False,
+    "status": "idle",
+    "message": "系统就绪",
+    "signals_found": 0,
+    "processed": 0,
+    "total": 0,
+    "added_count": 0,
+    "last_completed_at": None,
+    "error": None,
+}
+
+
+def get_scan_state() -> dict:
+    """获取当前后台扫描任务的实时执行状态与进度"""
+    return dict(_scan_state)
+
 
 def execute_radar_cycle():
-    if not settings.GEMINI_API_KEY:
-        print("[Scheduler] 未检测到 GEMINI_API_KEY，跳过本次巡航。请在 .env 中配置 GEMINI_API_KEY。")
+    has_valid_key = bool(settings.GEMINI_API_KEY and settings.GEMINI_API_KEY != "your_gemini_api_key_here")
+    if not has_valid_key:
+        msg = "未配置有效的 GEMINI_API_KEY，跳过本次扫描。请在 .env 中填入 Google Gemini API Key。"
+        print(f"[Scheduler] {msg}")
+        _scan_state["running"] = False
+        _scan_state["status"] = "error"
+        _scan_state["message"] = msg
         return
 
-    # 防重入锁：如果上一轮扫描未结束，直接跳过，避免重复消耗 Token 和死锁
+    # 防重入锁：如果上一轮扫描未结束，直接跳过
     if not _scan_lock.acquire(blocking=False):
         print("⚠️ [Alpha Radar] 上一轮扫描与二创流水线正在运行中，跳过本次重叠触发。")
         return
 
+    _scan_state["running"] = True
+    _scan_state["status"] = "scraping"
+    _scan_state["message"] = "正在抓取 GitHub Trending 热门开源项目..."
+    _scan_state["processed"] = 0
+    _scan_state["total"] = 0
+    _scan_state["added_count"] = 0
+    _scan_state["error"] = None
+
     try:
-        print("🛰️ [Alpha Radar] 开始执行定时全网情报扫描（Reddit + GitHub Trending）...")
-        reddit_ingestor = RedditIngestor()
+        print("🛰️ [Alpha Radar] 开始执行全网情报扫描（优先 GitHub Trending + Reddit）...")
         github_ingestor = GitHubTrendingIngestor()
+        reddit_ingestor = RedditIngestor()
         engine = SynthesisEngine()
 
         all_signals = []
 
-        # 1. 抓取 Reddit 高潜力贴
-        try:
-            reddit_signals = reddit_ingestor.fetch_qualified_signals(max_signals=4)
-            all_signals.extend(reddit_signals)
-            print(f"   [Reddit] 筛选出 {len(reddit_signals)} 条高斜率信号。")
-        except Exception as e:
-            print(f"   ❌ Reddit 采集失败: {e}")
-
-        # 2. 抓取 GitHub Trending 热门项目
+        # 1. 优先抓取 GitHub Trending 热门开源爆款（速度快、无封禁风险）
         try:
             gh_signals = github_ingestor.fetch_trending_signals(max_signals=3)
             all_signals.extend(gh_signals)
@@ -43,17 +66,63 @@ def execute_radar_cycle():
         except Exception as e:
             print(f"   ❌ GitHub 采集失败: {e}")
 
-        print(f"🛰️ [Alpha Radar] 本轮共有 {len(all_signals)} 条候选信号进入 AI 认知加工流水线...")
+        # 2. 抓取 Reddit 高潜力贴（遇连续403自动熔断跳过）
+        _scan_state["message"] = f"已捕获 {len(all_signals)} 个 GitHub 项目，正在扫描 Reddit 社区..."
+        try:
+            reddit_signals = reddit_ingestor.fetch_qualified_signals(max_signals=3)
+            all_signals.extend(reddit_signals)
+            print(f"   [Reddit] 筛选出 {len(reddit_signals)} 条高斜率信号。")
+        except Exception as e:
+            print(f"   ❌ Reddit 采集失败: {e}")
 
-        for sig in all_signals:
+        _scan_state["signals_found"] = len(all_signals)
+        _scan_state["total"] = len(all_signals)
+
+        if not all_signals:
+            msg = "本轮全网巡航完成，未发现新满足阈值的信号（或今日内容已全部入库）。"
+            print(f"🛰️ [Alpha Radar] {msg}")
+            _scan_state["running"] = False
+            _scan_state["status"] = "idle"
+            _scan_state["message"] = msg
+            _scan_state["last_completed_at"] = datetime.now().strftime("%H:%M:%S")
+            return
+
+        print(f"🛰️ [Alpha Radar] 本轮共有 {len(all_signals)} 条候选信号进入 AI 深度二创加工流水线...")
+        _scan_state["status"] = "synthesizing"
+
+        added_count = 0
+        for idx, sig in enumerate(all_signals):
             try:
-                print(f"   ⚙️ 正在深度二创: [{sig['subreddit']}] {sig['title'][:55]}...")
+                _scan_state["processed"] = idx + 1
+                short_title = sig['title'][:28]
+                _scan_state["message"] = f"AI 深度二创加工中 ({idx + 1}/{len(all_signals)}): [{sig['subreddit']}] {short_title}..."
+                print(f"   ⚙️ 正在深度二创 ({idx + 1}/{len(all_signals)}): [{sig['subreddit']}] {sig['title'][:55]}...")
+                
                 draft_data = engine.synthesize(sig)
                 save_signal_and_draft(sig, draft_data)
-                status_tag = "✅ 入库待发" if draft_data["is_worth_posting"] else f"⏭️ 拦截 ({draft_data['skip_reason']})"
+                
+                if draft_data.get("is_worth_posting"):
+                    added_count += 1
+                    status_tag = "✅ 入库待发"
+                else:
+                    status_tag = f"⏭️ 初筛拦截 ({draft_data.get('skip_reason', '')})"
                 print(f"   -> {status_tag}")
             except Exception as e:
                 print(f"   ❌ 加工失败 [{sig['post_id']}]: {e}")
+
+        _scan_state["added_count"] = added_count
+        _scan_state["running"] = False
+        _scan_state["status"] = "done"
+        _scan_state["message"] = f"全网扫描合成完成！成功入库 {added_count} 条新草稿。"
+        _scan_state["last_completed_at"] = datetime.now().strftime("%H:%M:%S")
+        print(f"✨ [Alpha Radar] 本轮加工完毕，新增 {added_count} 条草稿入库。")
+
+    except Exception as e:
+        _scan_state["running"] = False
+        _scan_state["status"] = "error"
+        _scan_state["error"] = str(e)
+        _scan_state["message"] = f"扫描流程发生异常: {e}"
+        print(f"❌ [Alpha Radar] 致命异常: {e}")
     finally:
         _scan_lock.release()
 
@@ -68,5 +137,5 @@ def start_background_scheduler() -> BackgroundScheduler:
         replace_existing=True,
     )
     scheduler.start()
-    print(f"⏱️ 后台定时巡航已启动：每 {settings.SCAN_INTERVAL_MINUTES} 分钟自动抓取一次（Reddit + GitHub Trending）。")
+    print(f"⏱️ 后台定时巡航已启动：每 {settings.SCAN_INTERVAL_MINUTES} 分钟自动抓取一次（GitHub Trending + Reddit）。")
     return scheduler

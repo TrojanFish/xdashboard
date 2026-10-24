@@ -12,7 +12,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel
 from app.config import settings
 from app.database import get_conn, init_db
-from app.scheduler import start_background_scheduler, execute_radar_cycle
+from app.scheduler import start_background_scheduler, execute_radar_cycle, get_scan_state
 
 init_db()
 
@@ -277,9 +277,24 @@ def save_draft(post_id: str, payload: DraftEdit, username: str = Depends(verify_
 
 @app.post("/api/scan")
 def trigger_scan(background_tasks: BackgroundTasks, username: str = Depends(verify_credentials)):
-    """使用 FastAPI 原生 BackgroundTasks 异步执行，保证稳定安全、跨平台零子进程报错"""
+    """使用 FastAPI 原生 BackgroundTasks 异步执行，带密钥检测与防重复并发保护"""
+    if not settings.GEMINI_API_KEY or settings.GEMINI_API_KEY == "your_gemini_api_key_here":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="未检测到有效的 GEMINI_API_KEY！请先在 .env 文件中填入你的 Google Gemini API Key（免费申请: https://aistudio.google.com/）并重启服务。"
+        )
+    state = get_scan_state()
+    if state.get("running"):
+        return {"ok": True, "message": "全网扫描流水线正在进行中，请观察进度...", "state": state}
+
     background_tasks.add_task(execute_radar_cycle)
-    return {"ok": True, "message": "全网雷达扫描已在后台启动，1-2 分钟后刷新页面即可查看最新草稿。"}
+    return {"ok": True, "message": "全网扫描与 AI 二创流水线已启动！", "state": state}
+
+
+@app.get("/api/scan/status")
+def get_scan_status_api(username: str = Depends(verify_credentials)):
+    """获取当前扫描流水线的实时进度"""
+    return get_scan_state()
 
 
 @app.get("/api/sources")

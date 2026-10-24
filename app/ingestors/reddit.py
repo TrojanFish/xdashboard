@@ -49,17 +49,27 @@ class RedditIngestor:
 
         candidates = []
         now_ts = datetime.now(timezone.utc).timestamp()
+        consecutive_403 = 0
 
         for src in sources:
+            if consecutive_403 >= 3:
+                print("   [Reddit] 检测到连续 403 阻断（机房 IP 或无代理），自动跳过剩余 Reddit 源以加速执行。")
+                break
+
             sub = src["subreddit"]
             for feed in ["rising", "hot"]:
                 url = self._build_url(f"/r/{sub}/{feed}.json?limit=25&raw_json=1")
                 try:
-                    resp = self.session.get(url, timeout=12)
+                    resp = self.session.get(url, timeout=8)
+                    if resp.status_code == 403:
+                        consecutive_403 += 1
+                        print(f"   [采集跳过] r/{sub}/{feed} HTTP 403 (需配置 REDDIT_PROXY_URL)")
+                        break # 跳过该 sub 的后续 feed，进入下一个
                     if resp.status_code != 200:
-                        print(f"[采集跳过] r/{sub}/{feed} HTTP {resp.status_code}")
+                        print(f"   [采集跳过] r/{sub}/{feed} HTTP {resp.status_code}")
                         continue
 
+                    consecutive_403 = 0
                     children = resp.json().get("data", {}).get("children", [])
                     for item in children:
                         p = item.get("data", {})

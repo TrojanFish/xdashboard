@@ -531,22 +531,62 @@ async function saveEdits() {
     showToast("💾 已保存修改");
 }
 
+let scanPollInterval = null;
+
 async function triggerScan() {
     const btn = document.getElementById('scanBtn');
-    btn.innerHTML = '<span class="animate-spin">⏳</span><span>扫描全网中...</span>';
+
+    // 1. 优先校验是否已配置有效 Gemini API Key
+    if (!appConfig.has_gemini_key) {
+        alert("⚠️ 未检测到有效的 Google Gemini API Key！\n\nAI 二创流水线需要调用 Gemini 才能提炼 README、拆解架构并产出长短推文。\n\n请按以下步骤配置：\n1. 打开项目根目录下的 .env 文件\n2. 将 GEMINI_API_KEY=your_gemini_api_key_here 替换为你的真实 Key\n3. 重启服务后即可正常扫描！\n\n免费申请 Key: https://aistudio.google.com/");
+        return;
+    }
+
+    btn.innerHTML = '<span class="animate-spin">⏳</span><span>启动扫描流水线...</span>';
     btn.disabled = true;
+
     try {
         const res = await fetch('/api/scan', { method: 'POST' });
         const data = await res.json();
-        showToast("🛰️ " + (data.message || "全网扫描已启动"));
-        setTimeout(() => loadDrafts(), 6000);
-    } catch (e) {
-        showToast("❌ 扫描启动失败");
-    } finally {
-        setTimeout(() => {
+
+        if (!res.ok) {
+            alert("⚠️ " + (data.detail || "扫描启动失败"));
             btn.innerHTML = '<span>⚡ 扫描全网 (Reddit+GitHub)</span>';
             btn.disabled = false;
-        }, 4000);
+            return;
+        }
+
+        showToast("🛰️ " + (data.message || "全网扫描已启动"));
+        btn.innerHTML = '<span class="animate-spin">⏳</span><span>正在抓取全网热点...</span>';
+
+        // 启动轮询动态追踪后台进度（实时反馈当前步骤，彻底消除无响应假死感）
+        if (scanPollInterval) clearInterval(scanPollInterval);
+        scanPollInterval = setInterval(async () => {
+            try {
+                const sRes = await fetch('/api/scan/status');
+                if (sRes.ok) {
+                    const statusData = await sRes.json();
+                    if (statusData.message) {
+                        const displayMsg = statusData.message.length > 22 ? statusData.message.slice(0, 22) + '...' : statusData.message;
+                        btn.innerHTML = `<span class="animate-spin">⏳</span><span>${displayMsg}</span>`;
+                    }
+                    if (!statusData.running) {
+                        clearInterval(scanPollInterval);
+                        btn.innerHTML = '<span>⚡ 扫描全网 (Reddit+GitHub)</span>';
+                        btn.disabled = false;
+                        showToast("✅ " + (statusData.message || "全网扫描完成！"));
+                        loadDrafts();
+                    }
+                }
+            } catch (err) {
+                console.warn("Poll status error", err);
+            }
+        }, 2000);
+
+    } catch (e) {
+        showToast("❌ 网络连接异常");
+        btn.innerHTML = '<span>⚡ 扫描全网 (Reddit+GitHub)</span>';
+        btn.disabled = false;
     }
 }
 
