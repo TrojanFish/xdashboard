@@ -1,52 +1,70 @@
 <!DOCTYPE html>
-<html lang="zh-CN" class="dark">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <title>Personal Alpha Studio — X 爆款策展工作台</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js"></script>
     <style>
-        body { background-color: #09090b; color: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; }
+        :root {
+            --bg-color: #FAF8F5;
+            --sidebar-bg: #F5F1EA;
+            --card-bg: #FFFFFF;
+            --text-main: #201E1C;
+            --text-muted: #6E6860;
+            --border-color: #E8E2D8;
+            --claude-accent: #CC5A2B;
+            --claude-accent-hover: #B84E22;
+        }
+        body { 
+            background-color: var(--bg-color); 
+            color: var(--text-main); 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Charter", Georgia, serif, monospace; 
+        }
         ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb { background: #D5CFB5; border-radius: 3px; }
+        ::-webkit-scrollbar-track { background: transparent; }
     </style>
 </head>
-<body class="h-screen flex flex-col overflow-hidden select-none">
+<body class="h-screen flex flex-col overflow-hidden select-none bg-[#FAF8F5]">
 
     <!-- 顶部告警条 (仅在未配置 GEMINI_API_KEY 时显示) -->
-    <div id="keyAlert" class="bg-amber-500/20 border-b border-amber-500/30 px-6 py-2 text-xs text-amber-300 hidden items-center justify-between shrink-0">
+    <div id="keyAlert" class="bg-[#FFFBEB] border-b border-[#FDE68A] px-6 py-2 text-xs text-[#92400E] hidden items-center justify-between shrink-0 font-sans">
         <div class="flex items-center gap-2">
             <span>⚠️ <b>未检测到 GEMINI_API_KEY</b>：请在项目根目录的 <code>.env</code> 文件中配置密钥并重启服务，否则 AI 二创流水线将跳过合成。</span>
         </div>
-        <a href="https://aistudio.google.com/" target="_blank" class="underline font-semibold hover:text-white">免费获取 API Key ↗</a>
+        <a href="https://aistudio.google.com/" target="_blank" class="underline font-semibold hover:text-[#78350F]">免费获取 API Key ↗</a>
     </div>
 
-    <!-- 顶部导航栏 -->
-    <header class="h-14 border-b border-zinc-800 bg-zinc-950 px-6 flex items-center justify-between shrink-0">
+    <!-- 顶部导航栏 (Claude 暖色纸质雅致风) -->
+    <header class="h-14 border-b border-[#E8E2D8] bg-[#FFFFFF] px-6 flex items-center justify-between shrink-0 shadow-sm">
         <div class="flex items-center gap-3">
-            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <h1 class="font-bold text-base tracking-wider text-zinc-100">PERSONAL ALPHA STUDIO <span class="text-xs font-normal text-zinc-500 ml-2">Reddit + GitHub Trending → X Alpha</span></h1>
+            <span class="w-2.5 h-2.5 rounded-full bg-[#386641] animate-pulse"></span>
+            <h1 class="font-bold text-base tracking-tight text-[#201E1C] font-sans">
+                PERSONAL ALPHA STUDIO 
+                <span class="text-xs font-normal text-[#757067] ml-2 font-mono">Reddit + GitHub Trending → X Editorial Alpha</span>
+            </h1>
         </div>
         <div class="flex items-center gap-3">
             <!-- 赛道筛选 -->
-            <div class="flex bg-zinc-900 p-1 rounded-lg border border-zinc-800 text-xs">
-                <button onclick="setFilter('category', 'ALL')" id="cat-ALL" class="px-3 py-1 rounded-md bg-zinc-800 text-white font-medium">全部赛道</button>
-                <button onclick="setFilter('category', 'GITHUB_TRENDING')" id="cat-GITHUB_TRENDING" class="px-3 py-1 rounded-md text-zinc-400 hover:text-white flex items-center gap-1">⭐ GitHub 趋势</button>
-                <button onclick="setFilter('category', 'AI_DEV')" id="cat-AI_DEV" class="px-3 py-1 rounded-md text-zinc-400 hover:text-white">AI / 开发</button>
-                <button onclick="setFilter('category', 'FINANCE')" id="cat-FINANCE" class="px-3 py-1 rounded-md text-zinc-400 hover:text-white">金融 / 交易</button>
+            <div class="flex bg-[#F3EFE9] p-1 rounded-lg border border-[#E3DDD2] text-xs font-sans">
+                <button onclick="setFilter('category', 'ALL')" id="cat-ALL" class="px-3 py-1 rounded-md bg-[#FFFFFF] text-[#201E1C] font-medium shadow-sm">全部赛道</button>
+                <button onclick="setFilter('category', 'GITHUB_TRENDING')" id="cat-GITHUB_TRENDING" class="px-3 py-1 rounded-md text-[#6E6860] hover:text-[#201E1C] flex items-center gap-1">⭐ GitHub 趋势</button>
+                <button onclick="setFilter('category', 'AI_DEV')" id="cat-AI_DEV" class="px-3 py-1 rounded-md text-[#6E6860] hover:text-[#201E1C]">AI / 开发</button>
+                <button onclick="setFilter('category', 'FINANCE')" id="cat-FINANCE" class="px-3 py-1 rounded-md text-[#6E6860] hover:text-[#201E1C]">金融 / 交易</button>
             </div>
             <!-- 状态筛选 -->
-            <select id="statusSelect" onchange="setFilter('status', this.value)" class="bg-zinc-900 border border-zinc-800 text-xs text-zinc-300 rounded-lg px-3 py-1.5 outline-none">
+            <select id="statusSelect" onchange="setFilter('status', this.value)" class="bg-[#FFFFFF] border border-[#E0DBD2] text-xs text-[#3A3630] rounded-lg px-3 py-1.5 outline-none font-sans">
                 <option value="pending">待发布草稿 (Pending)</option>
                 <option value="published">已发布 (Published)</option>
                 <option value="archived">已归档跳过 (Archived)</option>
             </select>
-            <button onclick="openSourcesModal()" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-medium px-3.5 py-1.5 rounded-lg transition">⚙️ 监控源配置</button>
-            <button onclick="triggerScan()" id="scanBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5">
+            <button onclick="openSourcesModal()" class="bg-[#F3EFE9] hover:bg-[#EAE4D9] text-[#3D3933] text-xs font-medium px-3.5 py-1.5 rounded-lg border border-[#E0DBD0] transition font-sans">⚙️ 监控源配置</button>
+            <button onclick="triggerScan()" id="scanBtn" class="bg-[#CC5A2B] hover:bg-[#B84E22] text-white text-xs font-medium px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-sm font-sans">
                 <span>⚡ 扫描全网 (Reddit+GitHub)</span>
             </button>
-            <div class="h-4 w-[1px] bg-zinc-800 mx-1"></div>
-            <button onclick="logout()" title="退出工作台" class="text-zinc-500 hover:text-rose-400 text-xs px-2.5 py-1.5 rounded-lg border border-zinc-800 hover:border-rose-500/30 hover:bg-rose-500/10 transition flex items-center gap-1">
+            <div class="h-4 w-[1px] bg-[#E2DBD0] mx-1"></div>
+            <button onclick="logout()" title="退出工作台" class="text-[#7A746B] hover:text-[#C53030] hover:bg-[#FFF5F5] text-xs px-2.5 py-1.5 rounded-lg border border-[#EAE4DA] transition flex items-center gap-1 font-sans">
                 <span>🚪 退出</span>
             </button>
         </div>
@@ -54,43 +72,43 @@
 
     <!-- 主体分栏 -->
     <div class="flex-1 flex overflow-hidden">
-        <!-- 左侧：高信噪比情报源队列 -->
-        <aside class="w-1/3 max-w-md border-r border-zinc-800 bg-zinc-950/60 overflow-y-auto divide-y divide-zinc-800/60" id="feedList">
-            <div class="p-8 text-center text-zinc-500 text-sm">正在加载本地草稿库...</div>
+        <!-- 左侧：高信噪比情报源队列 (温润卡片列表) -->
+        <aside class="w-1/3 max-w-md border-r border-[#E8E2D8] bg-[#F5F1EA] overflow-y-auto divide-y divide-[#ECE7DC]" id="feedList">
+            <div class="p-8 text-center text-[#7A746B] text-sm">正在加载本地草稿库...</div>
         </aside>
 
         <!-- 右侧：推文精修 + 视觉卡片工作室 -->
-        <main class="flex-1 overflow-y-auto p-6 bg-zinc-950" id="editorPane">
-            <div class="h-full flex flex-col items-center justify-center text-zinc-600 text-sm">
+        <main class="flex-1 overflow-y-auto p-6 bg-[#FAF8F5]" id="editorPane">
+            <div class="h-full flex flex-col items-center justify-center text-[#8C867D] text-sm">
                 👈 点击左侧任意情报卡片，进入二创精修与配图渲染
             </div>
         </main>
     </div>
 
     <!-- 监控源管理弹窗 -->
-    <div id="sourcesModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center">
-        <div class="bg-zinc-900 border border-zinc-800 w-full max-w-2xl rounded-2xl p-6 shadow-2xl space-y-6">
-            <div class="flex items-center justify-between border-b border-zinc-800 pb-4">
-                <h3 class="font-bold text-white text-sm">⚙️ Reddit 监控源与阈值管理</h3>
-                <button onclick="closeSourcesModal()" class="text-zinc-500 hover:text-white text-sm">✕ 关闭</button>
+    <div id="sourcesModal" class="fixed inset-0 bg-[#2D2A26]/40 backdrop-blur-sm z-50 hidden flex items-center justify-center">
+        <div class="bg-[#FFFFFF] border border-[#E5DFD4] w-full max-w-2xl rounded-2xl p-6 shadow-2xl space-y-6">
+            <div class="flex items-center justify-between border-b border-[#EFEAE2] pb-4">
+                <h3 class="font-bold text-[#201E1C] text-sm font-sans">⚙️ 社区监控源与过滤阈值</h3>
+                <button onclick="closeSourcesModal()" class="text-[#8C867D] hover:text-[#201E1C] text-sm font-mono">✕ 关闭</button>
             </div>
             <div id="sourcesList" class="space-y-2 max-h-60 overflow-y-auto pr-2"></div>
             <!-- 添加新监控源表单 -->
-            <form onsubmit="addSource(event)" class="grid grid-cols-6 gap-2 pt-2 border-t border-zinc-800">
-                <input type="text" id="newSub" placeholder="Subreddit名(例: BitcoinMarkets)" required class="col-span-2 bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-white outline-none">
-                <select id="newCat" class="bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1.5 text-xs text-white outline-none">
+            <form onsubmit="addSource(event)" class="grid grid-cols-6 gap-2 pt-2 border-t border-[#EFEAE2]">
+                <input type="text" id="newSub" placeholder="Subreddit名(例: BitcoinMarkets)" required class="col-span-2 bg-[#FAF8F5] border border-[#E0DBD2] rounded-lg px-3 py-1.5 text-xs text-[#201E1C] outline-none">
+                <select id="newCat" class="bg-[#FAF8F5] border border-[#E0DBD2] rounded-lg px-2 py-1.5 text-xs text-[#201E1C] outline-none">
                     <option value="AI_DEV">AI_DEV</option>
                     <option value="FINANCE">FINANCE</option>
                 </select>
-                <input type="number" id="newScore" placeholder="最低分" value="30" class="bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1.5 text-xs text-white outline-none">
-                <input type="number" step="0.05" id="newVel" placeholder="斜率" value="0.4" class="bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1.5 text-xs text-white outline-none">
-                <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-medium">➕ 添加</button>
+                <input type="number" id="newScore" placeholder="最低分" value="30" class="bg-[#FAF8F5] border border-[#E0DBD2] rounded-lg px-2 py-1.5 text-xs text-[#201E1C] outline-none">
+                <input type="number" step="0.05" id="newVel" placeholder="斜率" value="0.4" class="bg-[#FAF8F5] border border-[#E0DBD2] rounded-lg px-2 py-1.5 text-xs text-[#201E1C] outline-none">
+                <button type="submit" class="bg-[#CC5A2B] hover:bg-[#B84E22] text-white rounded-lg text-xs font-medium shadow-sm">➕ 添加</button>
             </form>
         </div>
     </div>
 
     <!-- 底部 Toast -->
-    <div id="toast" class="fixed bottom-5 right-5 bg-emerald-600 text-white text-xs font-medium px-4 py-2.5 rounded-lg shadow-xl hidden transition-all z-50"></div>
+    <div id="toast" class="fixed bottom-5 right-5 bg-[#201E1C] text-white text-xs font-medium px-4 py-2.5 rounded-lg shadow-xl hidden transition-all z-50 font-sans"></div>
 
 <script>
 let drafts = [];
@@ -142,8 +160,8 @@ function setFilter(key, val) {
             const btn = document.getElementById('cat-' + c);
             if (btn) {
                 btn.className = c === val
-                    ? "px-3 py-1 rounded-md bg-zinc-800 text-white font-medium"
-                    : "px-3 py-1 rounded-md text-zinc-400 hover:text-white";
+                    ? "px-3 py-1 rounded-md bg-[#FFFFFF] text-[#201E1C] font-medium shadow-sm"
+                    : "px-3 py-1 rounded-md text-[#6E6860] hover:text-[#201E1C]";
             }
         });
     }
@@ -162,58 +180,58 @@ async function loadDrafts() {
         const stillExists = drafts.find(d => d.post_id === currentId);
         selectDraft(stillExists ? currentId : drafts[0].post_id);
     } else {
-        document.getElementById('editorPane').innerHTML = `<div class="h-full flex items-center justify-center text-zinc-600 text-sm">当前筛选条件下暂无草稿，可点击右上角「⚡ 扫描全网情报」</div>`;
+        document.getElementById('editorPane').innerHTML = `<div class="h-full flex items-center justify-center text-[#8C867D] text-sm">当前筛选条件下暂无草稿，可点击右上角「⚡ 扫描全网情报」</div>`;
     }
 }
 
 function renderFeedList() {
     const container = document.getElementById('feedList');
     if (!drafts.length) {
-        container.innerHTML = `<div class="p-8 text-center text-zinc-600 text-sm">暂无数据</div>`;
+        container.innerHTML = `<div class="p-8 text-center text-[#8C867D] text-sm">暂无数据</div>`;
         return;
     }
     container.innerHTML = drafts.map(d => {
         const isSelected = d.post_id === currentId;
         const isGithub = d.category === 'GITHUB_TRENDING';
         
-        let badgeColor = 'bg-amber-500/10 text-amber-400 border-amber-500/30';
+        let badgeColor = 'bg-[#FEF3E2] text-[#B45309] border-[#FDE68A]';
         if (isGithub) {
-            badgeColor = 'bg-purple-500/10 text-purple-400 border-purple-500/30';
+            badgeColor = 'bg-[#F3EFFB] text-[#553C9A] border-[#DDD3F5]';
         } else if (d.category === 'AI_DEV') {
-            badgeColor = 'bg-sky-500/10 text-sky-400 border-sky-500/30';
+            badgeColor = 'bg-[#EBF3FA] text-[#1E6091] border-[#D0E3F3]';
         }
 
         const tier = d.content_tier || 'DEEP_DIVE_MEMO';
-        let tierBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-indigo-500/10 text-indigo-400 border border-indigo-500/30">📜 深度长文</span>`;
+        let tierBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-[#EEF2FF] text-[#4338CA] border border-[#E0E7FF]">📜 深度长文</span>`;
         if (tier === 'FLASH_PUNCH') {
-            tierBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-amber-500/10 text-amber-400 border border-amber-500/30">⚡ 极简短推</span>`;
+            tierBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-[#FFF7ED] text-[#C2410C] border border-[#FFEDD5]">⚡ 极简短推</span>`;
         } else if (tier === 'DEBATE_ROUNDTABLE') {
-            tierBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-rose-500/10 text-rose-400 border border-rose-500/30">🥊 争议圆桌</span>`;
+            tierBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-[#FEF2F2] text-[#B91C1C] border border-[#FEE2E2]">🥊 争议圆桌</span>`;
         }
 
         const metricsSnippet = isGithub
-            ? `<div class="flex items-center gap-1.5 text-purple-300 font-mono text-xs">
+            ? `<div class="flex items-center gap-1.5 text-[#553C9A] font-mono text-xs">
                    <span>⭐ +${d.score} stars today</span>
                </div>`
-            : `<div class="flex items-center gap-2 text-zinc-400 font-mono">
+            : `<div class="flex items-center gap-2 text-[#7A746B] font-mono text-xs">
                    <span title="增长斜率">⚡ ${d.velocity}/m</span>
                    <span title="评论争议比">🔥 ${d.controversy}</span>
                </div>`;
 
         const footerSnippet = isGithub
-            ? `<div class="flex items-center gap-2"><span>开源拆解</span>${tierBadge}</div>
-               <span class="text-purple-400 font-mono text-[10px]">${d.narrative_framework || 'Repo Teardown'}</span>`
-            : `<div class="flex items-center gap-2"><span>▲ ${d.score} · 💬 ${d.num_comments}</span>${tierBadge}</div>
-               <span class="text-indigo-400 font-mono text-[10px]">${d.narrative_framework || ''}</span>`;
+            ? `<div class="flex items-center gap-1.5"><span>🐙 开源拆解</span>${tierBadge}</div>
+               <span class="text-[#553C9A] font-mono text-[10px]">${d.narrative_framework || 'Repo Teardown'}</span>`
+            : `<div class="flex items-center gap-1.5"><span>▲ ${d.score} · 💬 ${d.num_comments}</span>${tierBadge}</div>
+               <span class="text-[#CC5A2B] font-mono text-[10px]">${d.narrative_framework || ''}</span>`;
 
         return `
-        <div onclick="selectDraft('${d.post_id}')" class="p-4 cursor-pointer transition hover:bg-zinc-900/70 ${isSelected ? 'bg-zinc-900 border-l-2 border-l-indigo-500' : ''}">
+        <div onclick="selectDraft('${d.post_id}')" class="p-4 cursor-pointer transition hover:bg-[#FFFFFF]/70 ${isSelected ? 'bg-[#FFFFFF] border-l-4 border-l-[#CC5A2B] shadow-sm' : ''}">
             <div class="flex items-center justify-between text-xs mb-1.5">
                 <span class="px-2 py-0.5 rounded border ${badgeColor} font-mono">${isGithub ? '🐙 ' + d.subreddit : 'r/' + d.subreddit}</span>
                 ${metricsSnippet}
             </div>
-            <h3 class="text-sm font-medium text-zinc-200 line-clamp-2 leading-snug mb-2 select-text">${d.title}</h3>
-            <div class="flex items-center justify-between text-xs text-zinc-500">
+            <h3 class="text-sm font-semibold text-[#201E1C] line-clamp-2 leading-snug mb-2 select-text font-sans">${d.title}</h3>
+            <div class="flex items-center justify-between text-xs text-[#7A746B]">
                 ${footerSnippet}
             </div>
         </div>`;
@@ -241,27 +259,27 @@ function renderEditor() {
     const isGithub = item.category === 'GITHUB_TRENDING';
 
     const hooksHtml = hooks.map((h, idx) => `
-        <div onclick="switchHook(${idx})" class="p-3 rounded-lg border cursor-pointer transition text-sm select-text ${idx === selectedHookIdx ? 'border-indigo-500 bg-indigo-950/20 text-zinc-100' : 'border-zinc-800 bg-zinc-900/50 text-zinc-400 hover:border-zinc-700'}">
-            <div class="text-xs font-mono text-indigo-400 mb-1">HOOK 备选 #${idx + 1} ${idx === selectedHookIdx ? '(已激活)' : ''}</div>
-            <div>${h}</div>
+        <div onclick="switchHook(${idx})" class="p-3 rounded-lg border cursor-pointer transition text-sm select-text ${idx === selectedHookIdx ? 'border-[#CC5A2B] bg-[#FFF8F5] text-[#201E1C] ring-1 ring-[#CC5A2B]/20 shadow-sm' : 'border-[#E5DFD4] bg-[#FFFFFF] text-[#4A453E] hover:border-[#CC5A2B]/40 hover:bg-[#FAF8F5]'}">
+            <div class="text-xs font-mono text-[#CC5A2B] mb-1 font-medium">HOOK 备选 #${idx + 1} ${idx === selectedHookIdx ? '(已激活)' : ''}</div>
+            <div class="leading-relaxed font-sans">${h}</div>
         </div>
     `).join('');
 
     const metricsHtml = metrics.map(m => {
-        const dot = m.sentiment === 'positive' ? 'bg-emerald-400' : (m.sentiment === 'negative' ? 'bg-rose-400' : 'bg-sky-400');
-        const border = m.sentiment === 'positive' ? 'border-emerald-500/30 bg-emerald-950/15' : (m.sentiment === 'negative' ? 'border-rose-500/30 bg-rose-950/15' : 'border-zinc-700/60 bg-zinc-900/70');
+        const dot = m.sentiment === 'positive' ? 'bg-[#2E7D32]' : (m.sentiment === 'negative' ? 'bg-[#C0392B]' : 'bg-[#706B63]');
+        const border = m.sentiment === 'positive' ? 'border-[#C4DECA] bg-[#EDF6EE] text-[#1B4D2E]' : (m.sentiment === 'negative' ? 'border-[#F7CCD0] bg-[#FDF0F1] text-[#7A1C24]' : 'border-[#E5DFD4] bg-[#FFFFFF] text-[#2E2B27]');
         return `
-        <div class="p-3 rounded-lg border ${border} flex flex-col justify-between">
+        <div class="p-3 rounded-lg border ${border} flex flex-col justify-between shadow-xs">
             <div class="flex items-center gap-2 mb-1">
                 <span class="w-2 h-2 rounded-full ${dot}"></span>
-                <span class="text-[11px] font-mono uppercase tracking-wider text-zinc-400">${m.label}</span>
+                <span class="text-[11px] font-mono uppercase tracking-wider text-[#757067] font-semibold">${m.label}</span>
             </div>
-            <div class="text-xs font-semibold text-zinc-100 leading-snug">${m.value}</div>
+            <div class="text-xs font-semibold leading-snug font-sans">${m.value}</div>
         </div>`;
     }).join('');
 
     const sourceLabel = isGithub ? 'GitHub ↗' : 'Reddit ↗';
-    const sourceClass = isGithub ? 'text-purple-400' : 'text-indigo-400';
+    const sourceClass = isGithub ? 'text-[#553C9A]' : 'text-[#CC5A2B]';
 
     // 格式与等级信息
     const tier = item.content_tier || 'DEEP_DIVE_MEMO';
@@ -276,19 +294,19 @@ function renderEditor() {
 
     document.getElementById('editorPane').innerHTML = `
         <div class="max-w-6xl mx-auto space-y-6">
-            <!-- 原帖信息与操作栏 -->
-            <div class="flex items-center justify-between bg-zinc-900/80 border border-zinc-800 p-4 rounded-xl">
+            <!-- 原帖信息与操作栏 (温和纸白面板) -->
+            <div class="flex items-center justify-between bg-[#FFFFFF] border border-[#E8E2D8] p-4 rounded-xl shadow-sm">
                 <div class="space-y-1 pr-4">
-                    <div class="text-xs text-zinc-400 flex items-center gap-2">
+                    <div class="text-xs text-[#7A746B] flex items-center gap-2 font-sans">
                         <span>叙事框架: <b class="${sourceClass} font-mono">${item.narrative_framework || 'Alpha Synthesis'}</b></span>
                         <span>· 原始来源:</span>
                         <a href="${item.permalink}" target="_blank" class="${sourceClass} hover:underline font-mono">${sourceLabel}</a>
                     </div>
-                    <div class="text-sm font-semibold text-zinc-200 select-text">${item.title}</div>
+                    <div class="text-sm font-semibold text-[#201E1C] select-text font-sans">${item.title}</div>
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
-                    <button onclick="markStatus('${item.post_id}', 'archived')" class="px-3 py-1.5 rounded-lg border border-zinc-700 hover:bg-zinc-800 text-xs text-zinc-300">🗑️ 归档跳过</button>
-                    <button onclick="markStatus('${item.post_id}', 'published')" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-medium text-white">✅ 标记已发布</button>
+                    <button onclick="markStatus('${item.post_id}', 'archived')" class="px-3 py-1.5 rounded-lg border border-[#DDD6C8] hover:bg-[#F3EFE9] text-xs text-[#524E48] transition font-sans">🗑️ 归档跳过</button>
+                    <button onclick="markStatus('${item.post_id}', 'published')" class="px-3 py-1.5 rounded-lg bg-[#386641] hover:bg-[#2F5236] text-xs font-medium text-white transition shadow-sm font-sans">✅ 标记已发布</button>
                 </div>
             </div>
 
@@ -296,86 +314,86 @@ function renderEditor() {
                 <!-- 左列：Hook + 长短文 + 狙击 (7列) -->
                 <div class="lg:col-span-7 space-y-4">
                     <div>
-                        <label class="text-xs font-mono uppercase text-zinc-400 block mb-2">1. 点击切换黄金前两行 (Hook Options)</label>
+                        <label class="text-xs font-mono uppercase text-[#7A746B] block mb-2 font-medium">1. 点击切换黄金前两行 (Hook Options)</label>
                         <div class="space-y-2">${hooksHtml}</div>
                     </div>
 
                     <div>
                         <div class="flex items-center justify-between mb-2">
                             <div class="flex items-center gap-2 flex-wrap">
-                                <label class="text-xs font-mono uppercase text-zinc-400">2. X 发帖文案</label>
+                                <label class="text-xs font-mono uppercase text-[#7A746B] font-medium">2. X 发帖文案</label>
                                 <!-- 长短模式切换分段按钮 -->
-                                <div class="flex bg-zinc-950 p-0.5 rounded-lg border border-zinc-800 text-xs">
-                                    <button type="button" onclick="switchFormat('short')" id="fmt-short" class="px-2.5 py-1 rounded-md transition flex items-center gap-1 ${currentFormat === 'short' ? 'bg-indigo-600 text-white font-medium shadow' : 'text-zinc-400 hover:text-white'}">
+                                <div class="flex bg-[#F3EFE9] p-0.5 rounded-lg border border-[#E0DBD0] text-xs font-sans">
+                                    <button type="button" onclick="switchFormat('short')" id="fmt-short" class="px-2.5 py-1 rounded-md transition flex items-center gap-1 ${currentFormat === 'short' ? 'bg-[#CC5A2B] text-white font-medium shadow-sm' : 'text-[#6E6860] hover:text-[#201E1C]'}">
                                         <span>⚡ 极简短推 (Short)</span>
                                     </button>
-                                    <button type="button" onclick="switchFormat('long')" id="fmt-long" class="px-2.5 py-1 rounded-md transition flex items-center gap-1 ${currentFormat === 'long' ? 'bg-indigo-600 text-white font-medium shadow' : 'text-zinc-400 hover:text-white'}">
+                                    <button type="button" onclick="switchFormat('long')" id="fmt-long" class="px-2.5 py-1 rounded-md transition flex items-center gap-1 ${currentFormat === 'long' ? 'bg-[#CC5A2B] text-white font-medium shadow-sm' : 'text-[#6E6860] hover:text-[#201E1C]'}">
                                         <span>📜 深度长文 (Long)</span>
                                     </button>
                                 </div>
-                                <span class="text-[11px] font-mono text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded">${tierText}</span>
+                                <span class="text-[11px] font-mono text-[#7A746B] bg-[#F5F1EA] border border-[#E5DFD4] px-2 py-0.5 rounded">${tierText}</span>
                             </div>
-                            <span id="wordCount" class="text-xs font-mono text-zinc-500"></span>
+                            <span id="wordCount" class="text-xs font-mono text-[#8C867D]"></span>
                         </div>
-                        <textarea id="fullTweetBox" oninput="updateCount()" rows="13" class="w-full bg-zinc-900 border border-zinc-800 focus:border-indigo-500 rounded-xl p-4 text-sm text-zinc-100 leading-relaxed outline-none font-sans select-text">${fullTweetText}</textarea>
+                        <textarea id="fullTweetBox" oninput="updateCount()" rows="13" class="w-full bg-[#FFFFFF] border border-[#E0DBD0] focus:border-[#CC5A2B] focus:ring-2 focus:ring-[#CC5A2B]/10 rounded-xl p-4 text-sm text-[#201E1C] leading-relaxed outline-none font-sans select-text shadow-xs">${fullTweetText}</textarea>
 
-                        <div class="flex flex-wrap items-center gap-2 mt-3">
-                            <button onclick="copyFullPost()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2.5 rounded-lg">📋 复制当前推文</button>
-                            <button onclick="openXIntent()" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium px-4 py-2.5 rounded-lg border border-zinc-700">🚀 唤起 X 发帖页</button>
-                            <button onclick="saveEdits()" class="ml-auto text-xs text-zinc-400 hover:text-white px-3 py-2">💾 保存修改</button>
+                        <div class="flex flex-wrap items-center gap-2 mt-3 font-sans">
+                            <button onclick="copyFullPost()" class="bg-[#CC5A2B] hover:bg-[#B84E22] text-white text-xs font-semibold px-4 py-2.5 rounded-lg shadow-sm transition">📋 复制当前推文</button>
+                            <button onclick="openXIntent()" class="bg-[#F0EBE1] hover:bg-[#E7E0D2] text-[#2C2924] text-xs font-medium px-4 py-2.5 rounded-lg border border-[#DDD6C8] transition">🚀 唤起 X 发帖页</button>
+                            <button onclick="saveEdits()" class="ml-auto text-xs text-[#757067] hover:text-[#201E1C] px-3 py-2 transition">💾 保存修改</button>
                         </div>
                     </div>
 
-                    <!-- 杀手锏：大V评论区狙击 -->
-                    <div class="bg-zinc-900/50 border border-zinc-800/80 rounded-xl p-4 space-y-3">
+                    <!-- 杀手锏：大V评论区狙击 (Reply Sniper) -->
+                    <div class="bg-[#FDFBF7] border border-[#EBE4D8] rounded-xl p-4 space-y-3 shadow-xs">
                         <div class="flex items-center justify-between">
-                            <span class="text-xs font-mono text-amber-400 font-semibold">🎯 冲刺500粉截流武器库 (Reply Sniper)</span>
-                            <button onclick="copyText('sniperBox', '已复制狙击短评！')" class="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-2.5 py-1 rounded">复制短评</button>
+                            <span class="text-xs font-mono text-[#B45309] font-semibold">🎯 冲刺500粉截流武器库 (Reply Sniper)</span>
+                            <button onclick="copyText('sniperBox', '已复制狙击短评！')" class="text-xs bg-[#F3EFE9] hover:bg-[#EAE4D9] text-[#3D3933] px-2.5 py-1 rounded border border-[#E0DBD0] font-sans">复制短评</button>
                         </div>
-                        <textarea id="sniperBox" rows="2" class="w-full bg-transparent text-xs text-zinc-300 outline-none resize-none select-text">${item.sniper_reply || ''}</textarea>
-                        <div class="pt-2 border-t border-zinc-800 flex items-center justify-between text-xs gap-2 flex-wrap">
-                            <span class="text-zinc-500 font-mono">X搜索指令: <code class="text-indigo-300 select-all">${item.x_search_query || ''}</code></span>
-                            <button onclick="triggerXSearch()" class="bg-amber-600/20 text-amber-400 hover:bg-amber-600/30 border border-amber-500/30 px-3 py-1 rounded font-medium whitespace-nowrap">🔍 一键去 X 找大V贴截流 ↗</button>
+                        <textarea id="sniperBox" rows="2" class="w-full bg-transparent text-xs text-[#2B2823] outline-none resize-none select-text leading-relaxed font-sans">${item.sniper_reply || ''}</textarea>
+                        <div class="pt-2 border-t border-[#EFEAE2] flex items-center justify-between text-xs gap-2 flex-wrap font-sans">
+                            <span class="text-[#7A746B] font-mono">X搜索指令: <code class="bg-[#F0EBE1] text-[#9A3412] px-1.5 py-0.5 rounded border border-[#E2DBD0] select-all">${item.x_search_query || ''}</code></span>
+                            <button onclick="triggerXSearch()" class="bg-[#FFF7ED] text-[#C2410C] hover:bg-[#FFEDD5] border border-[#FDBA74] px-3 py-1 rounded font-medium whitespace-nowrap transition">🔍 一键去 X 找大V贴截流 ↗</button>
                         </div>
                     </div>
                 </div>
 
-                <!-- 右列：视觉卡片 (5列) -->
+                <!-- 右列：视觉卡片 (5列 · Claude 雅致纸本文档风) -->
                 <div class="lg:col-span-5 space-y-4">
-                    <div class="flex items-center justify-between">
-                        <label class="text-xs font-mono uppercase text-zinc-400">3. 原生暗黑信息图卡片 (16:9)</label>
+                    <div class="flex items-center justify-between font-sans">
+                        <label class="text-xs font-mono uppercase text-[#7A746B] font-medium">3. 雅致信息图卡片 (16:9)</label>
                         <div class="flex gap-2">
-                            <button onclick="copyCardAsImage()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">🖼️ 复制图片</button>
-                            <button onclick="downloadCardPng()" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs px-2.5 py-1.5 rounded-lg">⬇️ 下载 PNG</button>
+                            <button onclick="copyCardAsImage()" class="bg-[#386641] hover:bg-[#2F5236] text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow-sm transition">🖼️ 复制图片</button>
+                            <button onclick="downloadCardPng()" class="bg-[#F0EBE1] hover:bg-[#E7E0D2] text-[#3D3933] text-xs px-2.5 py-1.5 rounded-lg border border-[#DDD6C8] transition">⬇️ 下载 PNG</button>
                         </div>
                     </div>
 
-                    <!-- 卡片画布 -->
-                    <div id="visualCardCanvas" class="w-full aspect-video bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 border border-zinc-800 rounded-2xl p-6 flex flex-col justify-between relative overflow-hidden shadow-2xl">
-                        <div class="flex items-center justify-between border-b border-zinc-800/80 pb-3">
+                    <!-- 卡片画布 (Claude Warm Editorial Paper Card) -->
+                    <div id="visualCardCanvas" class="w-full aspect-video bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-[#F5F0E8] border-2 border-[#DDD6C8] rounded-2xl p-6 flex flex-col justify-between relative overflow-hidden shadow-md">
+                        <div class="flex items-center justify-between border-b border-[#E6E0D4] pb-3">
                             <div class="flex items-center gap-1.5">
-                                <span class="w-2.5 h-2.5 rounded-full bg-rose-500/80"></span>
-                                <span class="w-2.5 h-2.5 rounded-full bg-amber-500/80"></span>
-                                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500/80"></span>
-                                <span class="text-[11px] font-mono text-zinc-400 ml-2 uppercase tracking-widest">${item.category} // ${item.card.type || 'ALPHA'}</span>
+                                <span class="w-2.5 h-2.5 rounded-full bg-[#E06A55]"></span>
+                                <span class="w-2.5 h-2.5 rounded-full bg-[#E5A93C]"></span>
+                                <span class="w-2.5 h-2.5 rounded-full bg-[#5A9E6F]"></span>
+                                <span class="text-[11px] font-mono text-[#7A746B] ml-2 uppercase tracking-widest font-semibold">${item.category} // ${item.card.type || 'ALPHA'}</span>
                             </div>
-                            <span class="text-[11px] font-mono ${isGithub ? 'text-purple-400 bg-purple-950/50 border-purple-500/30' : 'text-indigo-400 bg-indigo-950/50 border-indigo-500/30'} border px-2 py-0.5 rounded">${isGithub ? 'GITHUB ALPHA' : 'REAL-WORLD SIGNAL'}</span>
+                            <span class="text-[11px] font-mono ${isGithub ? 'text-[#553C9A] bg-[#F3EFFB] border-[#DDD3F5]' : 'text-[#CC5A2B] bg-[#FFF2ED] border-[#FCD9CC]'} border px-2 py-0.5 rounded font-semibold">${isGithub ? 'GITHUB ALPHA' : 'RESEARCH MEMO'}</span>
                         </div>
 
                         <div class="my-2">
-                            <h2 contenteditable="true" class="text-base font-bold text-white tracking-tight leading-snug outline-none">${item.card.title || item.title}</h2>
+                            <h2 contenteditable="true" class="text-base font-bold text-[#1C1A17] tracking-tight leading-snug outline-none font-sans">${item.card.title || item.title}</h2>
                         </div>
 
                         <div class="grid grid-cols-2 gap-2 my-auto">
                             ${metricsHtml}
                         </div>
 
-                        <div class="flex items-center justify-between pt-3 border-t border-zinc-800/60 text-[10px] font-mono text-zinc-500">
-                            <span>${isGithub ? 'SYNTHESIZED FROM GITHUB OPEN SOURCE ARCHITECTURES' : 'SYNTHESIZED FROM PRACTITIONER DEBATES'}</span>
-                            <span contenteditable="true" class="text-zinc-400 outline-none">${appConfig.x_handle || '@YourHandle'}</span>
+                        <div class="flex items-center justify-between pt-3 border-t border-[#E6E0D4] text-[10px] font-mono text-[#8C867D]">
+                            <span>${isGithub ? 'SYNTHESIZED FROM GITHUB OPEN SOURCE ARCHITECTURES' : 'SYNTHESIZED FROM PRACTITIONER INSIGHTS'}</span>
+                            <span contenteditable="true" class="text-[#CC5A2B] font-semibold outline-none">${appConfig.x_handle || '@YourHandle'}</span>
                         </div>
                     </div>
-                    <p class="text-xs text-zinc-500 leading-relaxed">
+                    <p class="text-xs text-[#7A746B] leading-relaxed font-sans">
                         💡 提示：点击卡片上的标题或水印可直接修改。点击「复制图片」后切到 X 发帖框按 <code>Ctrl+V</code> 即可附带高清图。
                     </p>
                 </div>
@@ -406,15 +424,6 @@ function switchHook(idx) {
     renderFeedList();
 }
 
-function updateCount() {
-    const box = document.getElementById('fullTweetBox');
-    if (!box) return;
-    const text = box.value;
-    const words = text.trim().split(/\s+/).filter(Boolean).length;
-    const el = document.getElementById('wordCount');
-    if (el) el.innerText = `${words} 词 / ${text.length} 字符`;
-}
-
 function switchFormat(fmt) {
     currentFormat = fmt;
     const item = drafts.find(d => d.post_id === currentId);
@@ -424,11 +433,11 @@ function switchFormat(fmt) {
     const btnLong = document.getElementById('fmt-long');
     if (btnShort && btnLong) {
         if (fmt === 'short') {
-            btnShort.className = 'px-2.5 py-1 rounded-md transition flex items-center gap-1 bg-indigo-600 text-white font-medium shadow';
-            btnLong.className = 'px-2.5 py-1 rounded-md transition flex items-center gap-1 text-zinc-400 hover:text-white';
+            btnShort.className = 'px-2.5 py-1 rounded-md transition flex items-center gap-1 bg-[#CC5A2B] text-white font-medium shadow-sm';
+            btnLong.className = 'px-2.5 py-1 rounded-md transition flex items-center gap-1 text-[#6E6860] hover:text-[#201E1C]';
         } else {
-            btnShort.className = 'px-2.5 py-1 rounded-md transition flex items-center gap-1 text-zinc-400 hover:text-white';
-            btnLong.className = 'px-2.5 py-1 rounded-md transition flex items-center gap-1 bg-indigo-600 text-white font-medium shadow';
+            btnShort.className = 'px-2.5 py-1 rounded-md transition flex items-center gap-1 text-[#6E6860] hover:text-[#201E1C]';
+            btnLong.className = 'px-2.5 py-1 rounded-md transition flex items-center gap-1 bg-[#CC5A2B] text-white font-medium shadow-sm';
         }
     }
 
@@ -440,6 +449,15 @@ function switchFormat(fmt) {
         box.value = activeHook ? `${activeHook}\n\n${activeBody}` : activeBody;
         updateCount();
     }
+}
+
+function updateCount() {
+    const box = document.getElementById('fullTweetBox');
+    if (!box) return;
+    const text = box.value;
+    const words = text.trim().split(/\s+/).filter(Boolean).length;
+    const el = document.getElementById('wordCount');
+    if (el) el.innerText = `${words} 词 / ${text.length} 字符`;
 }
 
 function copyFullPost() {
@@ -536,7 +554,7 @@ async function copyCardAsImage() {
         await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
         showToast("🖼️ 卡片图片已复制！去 X 发帖框 Ctrl+V 粘贴");
     } catch (e) {
-        showToast("❌ 复制失败，请尝试下载 PNG");
+        showToast("⚠️ 建议使用旁边的「下载 PNG」按钮");
     }
 }
 
@@ -547,27 +565,21 @@ async function downloadCardPng() {
     link.download = `alpha-card-${currentId}.png`;
     link.href = dataUrl;
     link.click();
-    showToast("⬇️ PNG 已下载");
 }
 
 async function openSourcesModal() {
     document.getElementById('sourcesModal').classList.remove('hidden');
     const res = await fetch('/api/sources');
     const sources = await res.json();
-    const container = document.getElementById('sourcesList');
-    if (!sources.length) {
-        container.innerHTML = `<p class="text-zinc-500 text-xs">暂无监控源</p>`;
-        return;
-    }
-    container.innerHTML = sources.map(s => `
-        <div class="flex items-center justify-between bg-zinc-950/80 border border-zinc-800 rounded-lg px-3 py-2 text-xs">
-            <div class="flex items-center gap-3">
-                <span class="font-mono text-zinc-200">r/${s.subreddit}</span>
-                <span class="px-1.5 py-0.5 rounded text-[10px] ${s.category === 'AI_DEV' ? 'bg-sky-900/40 text-sky-400' : 'bg-amber-900/40 text-amber-400'}">${s.category}</span>
-                <span class="text-zinc-500">▲≥${s.min_score} ⚡≥${s.min_velocity} 🔥≥${s.min_controversy}</span>
+    document.getElementById('sourcesList').innerHTML = sources.map(s => `
+        <div class="flex items-center justify-between bg-[#FAF8F5] border border-[#E5DFD4] p-3 rounded-lg text-xs">
+            <div>
+                <span class="font-bold text-[#201E1C]">r/${s.subreddit}</span>
+                <span class="text-[#7A746B] ml-2 font-mono">(${s.category})</span>
+                <span class="text-[#8C867D] ml-3 font-mono">最低分:${s.min_score} | 斜率:${s.min_velocity}</span>
             </div>
-            <button onclick="toggleSource(${s.id})" class="px-2 py-1 rounded ${s.enabled ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30' : 'bg-zinc-800 text-zinc-500 border border-zinc-700'} text-[10px] font-mono">
-                ${s.enabled ? '● ON' : '○ OFF'}
+            <button onclick="toggleSource(${s.id})" class="px-2.5 py-1 rounded font-medium transition ${s.enabled ? 'bg-[#EDF6EE] text-[#1B4D2E] border border-[#C4DECA]' : 'bg-[#EAE4D9] text-[#7A746B]'}">
+                ${s.enabled ? '启用中' : '已禁用'}
             </button>
         </div>
     `).join('');
@@ -575,6 +587,7 @@ async function openSourcesModal() {
 
 function closeSourcesModal() {
     document.getElementById('sourcesModal').classList.add('hidden');
+    loadDrafts();
 }
 
 async function toggleSource(id) {
@@ -587,8 +600,8 @@ async function addSource(e) {
     const payload = {
         subreddit: document.getElementById('newSub').value,
         category: document.getElementById('newCat').value,
-        min_score: parseInt(document.getElementById('newScore').value),
-        min_velocity: parseFloat(document.getElementById('newVel').value),
+        min_score: parseInt(document.getElementById('newScore').value) || 30,
+        min_velocity: parseFloat(document.getElementById('newVel').value) || 0.4,
         min_controversy: 0.35
     };
     const res = await fetch('/api/sources', {
@@ -597,12 +610,12 @@ async function addSource(e) {
         body: JSON.stringify(payload)
     });
     if (res.ok) {
-        showToast(`✅ 已添加 r/${payload.subreddit}`);
         document.getElementById('newSub').value = '';
         openSourcesModal();
+        showToast("✅ 监控源添加成功");
     } else {
         const err = await res.json();
-        showToast(`❌ ${err.detail}`);
+        alert(err.detail);
     }
 }
 
