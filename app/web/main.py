@@ -1,9 +1,12 @@
+import hashlib
+import hmac
 import json
 import os
 import sys
-from fastapi import FastAPI, HTTPException, Depends, status, BackgroundTasks
-from fastapi.responses import HTMLResponse
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
+import time
+from typing import Optional
+from fastapi import FastAPI, HTTPException, Depends, status, BackgroundTasks, Request, Response, Cookie
+from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel
 from app.config import settings
 from app.database import get_conn, init_db
@@ -12,7 +15,9 @@ from app.scheduler import start_background_scheduler, execute_radar_cycle
 init_db()
 
 app = FastAPI(title="Personal Alpha Studio", docs_url=None, redoc_url=None)
-security = HTTPBasic()
+
+SESSION_COOKIE_NAME = "alpha_session"
+SESSION_MAX_AGE = 86400 * 30  # 30 天免登录
 
 
 @app.on_event("startup")
@@ -20,14 +25,109 @@ def startup_event():
     start_background_scheduler()
 
 
-def verify_credentials(credentials: HTTPBasicCredentials = Depends(security)):
-    if credentials.username != "admin" or credentials.password != settings.STUDIO_PASSWORD:
+def create_session_token(username: str = "admin") -> str:
+    """使用 HMAC-SHA256 生成安全的防篡改会话 Token"""
+    ts = int(time.time())
+    data = f"{username}:{ts}"
+    sig = hmac.new(settings.STUDIO_PASSWORD.encode(), data.encode(), hashlib.sha256).hexdigest()
+    return f"{data}:{sig}"
+
+
+def verify_session_token(token: Optional[str]) -> bool:
+    """验证会话 Token 的有效性与防篡改签名"""
+    if not token:
+        return False
+    parts = token.split(":")
+    if len(parts) != 3:
+        return False
+    username, ts_str, sig = parts
+    if username != "admin":
+        return False
+    try:
+        ts = int(ts_str)
+    except ValueError:
+        return False
+    if time.time() - ts > SESSION_MAX_AGE:
+        return False
+    expected_data = f"{username}:{ts}"
+    expected_sig = hmac.new(settings.STUDIO_PASSWORD.encode(), expected_data.encode(), hashlib.sha256).hexdigest()
+    return hmac.compare_digest(sig, expected_sig)
+
+
+def verify_credentials(request: Request, alpha_session: Optional[str] = Cookie(default=None)) -> str:
+    """API 鉴权逻辑：优先 Cookie 会话，兼顾 cURL/脚本的 HTTP Basic Auth"""
+    # 1. 优先校验 Cookie 会话
+    if alpha_session and verify_session_token(alpha_session):
+        return "admin"
+
+    # 2. 兼容 HTTP Basic Auth (用于脚本或 cURL 请求)
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Basic "):
+        try:
+            import base64
+            encoded = auth_header.split(" ", 1)[1]
+            decoded = base64.b64decode(encoded).decode("utf-8")
+            u, p = decoded.split(":", 1)
+            if u == "admin" and p == settings.STUDIO_PASSWORD:
+                return "admin"
+        except Exception:
+            pass
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="未授权访问，请先登录",
+    )
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+@app.post("/api/login")
+def login(payload: LoginRequest, response: Response):
+    """登录接口：校验密码并下发 HttpOnly 签名 Cookie"""
+    if payload.username != "admin" or payload.password != settings.STUDIO_PASSWORD:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Basic"},
+            detail="密码错误，请检查 .env 中的 STUDIO_PASSWORD"
         )
-    return credentials.username
+    token = create_session_token(payload.username)
+    response.set_cookie(
+        key=SESSION_COOKIE_NAME,
+        value=token,
+        httponly=True,
+        samesite="lax",
+        max_age=SESSION_MAX_AGE,
+    )
+    return {"ok": True, "message": "登录成功"}
+
+
+@app.post("/api/logout")
+def logout(response: Response):
+    """登出接口：销毁客户端 Cookie"""
+    response.delete_cookie(key=SESSION_COOKIE_NAME)
+    return {"ok": True, "message": "已退出登录"}
+
+
+@app.get("/login", response_class=HTMLResponse)
+def login_page(alpha_session: Optional[str] = Cookie(default=None)):
+    """独立深色登录页面，已登录则直接跳转首页"""
+    if alpha_session and verify_session_token(alpha_session):
+        return RedirectResponse(url="/", status_code=302)
+    template_path = os.path.join(os.path.dirname(__file__), "templates", "login.html")
+    with open(template_path, "r", encoding="utf-8") as f:
+        return f.read()
+
+
+@app.get("/", response_class=HTMLResponse)
+def index(alpha_session: Optional[str] = Cookie(default=None)):
+    """工作台主页：未登录自动重定向至 /login"""
+    if not (alpha_session and verify_session_token(alpha_session)):
+        return RedirectResponse(url="/login", status_code=302)
+    template_path = os.path.join(os.path.dirname(__file__), "templates", "index.html")
+    with open(template_path, "r", encoding="utf-8") as f:
+        return f.read()
 
 
 @app.get("/api/config")
@@ -39,6 +139,7 @@ def get_config(username: str = Depends(verify_credentials)):
         "scan_interval": settings.SCAN_INTERVAL_MINUTES,
         "triage_model": settings.TRIAGE_MODEL,
         "synthesis_model": settings.SYNTHESIS_MODEL,
+        "username": username,
     }
 
 
@@ -154,13 +255,6 @@ def toggle_source(source_id: int, username: str = Depends(verify_credentials)):
         conn.commit()
     conn.close()
     return {"ok": True}
-
-
-@app.get("/", response_class=HTMLResponse)
-def index(username: str = Depends(verify_credentials)):
-    template_path = os.path.join(os.path.dirname(__file__), "templates", "index.html")
-    with open(template_path, "r", encoding="utf-8") as f:
-        return f.read()
 
 
 if __name__ == "__main__":

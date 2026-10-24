@@ -59,7 +59,7 @@ def execute_radar_cycle():
 
 
 def start_background_scheduler() -> BackgroundScheduler:
-    scheduler = BackgroundScheduler()
+    scheduler = BackgroundScheduler(daemon=True)
     scheduler.add_job(
         execute_radar_cycle,
         "interval",

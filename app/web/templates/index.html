@@ -45,6 +45,10 @@
             <button onclick="triggerScan()" id="scanBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5">
                 <span>⚡ 扫描全网 (Reddit+GitHub)</span>
             </button>
+            <div class="h-4 w-[1px] bg-zinc-800 mx-1"></div>
+            <button onclick="logout()" title="退出工作台" class="text-zinc-500 hover:text-rose-400 text-xs px-2.5 py-1.5 rounded-lg border border-zinc-800 hover:border-rose-500/30 hover:bg-rose-500/10 transition flex items-center gap-1">
+                <span>🚪 退出</span>
+            </button>
         </div>
     </header>
 
@@ -105,6 +109,10 @@ function showToast(msg) {
 async function loadConfig() {
     try {
         const res = await fetch('/api/config');
+        if (res.status === 401) {
+            window.location.href = '/login';
+            return;
+        }
         if (res.ok) {
             appConfig = await res.json();
             if (!appConfig.has_gemini_key) {
@@ -114,6 +122,15 @@ async function loadConfig() {
         }
     } catch (e) {
         console.warn("Config load failed", e);
+    }
+}
+
+async function logout() {
+    if (confirm("确定要退出当前工作台吗？")) {
+        try {
+            await fetch('/api/logout', { method: 'POST' });
+        } catch (e) {}
+        window.location.href = '/login';
     }
 }
 
@@ -135,7 +152,7 @@ function setFilter(key, val) {
 async function loadDrafts() {
     const res = await fetch(`/api/drafts?category=${filters.category}&status=${filters.status}`);
     if (res.status === 401) {
-        alert("认证失败，请检查浏览器 Basic Auth 密码");
+        window.location.href = '/login';
         return;
     }
     drafts = await res.json();
