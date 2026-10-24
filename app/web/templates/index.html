@@ -121,6 +121,21 @@
                 <h3 class="font-bold text-[#201E1C] text-sm font-sans">⚙️ 社区监控源与过滤阈值</h3>
                 <button onclick="closeSourcesModal()" class="text-[#8C867D] hover:text-[#201E1C] text-sm font-mono">✕ 关闭</button>
             </div>
+
+            <!-- VPS 防 403 授权提示卡片 -->
+            <div id="redditAuthNotice" class="bg-[#FFFBEB] border border-[#FDE68A] rounded-xl p-3 text-xs text-[#92400E] space-y-1">
+                <div class="flex items-center justify-between font-semibold">
+                    <span class="flex items-center gap-1.5">
+                        <span id="redditStatusDot" class="w-2 h-2 rounded-full bg-[#D97706]"></span>
+                        <span id="redditStatusTitle">Reddit 海外 VPS 防 403 提示</span>
+                    </span>
+                    <a href="https://www.reddit.com/prefs/apps" target="_blank" class="underline hover:text-[#78350F]">免费获取 Script 凭据 ↗</a>
+                </div>
+                <p class="text-[11px] leading-relaxed text-[#78350F]">
+                    若部署在海外云 VPS（机房 IP），匿名抓取会被 Reddit Cloudflare 拦截 (403)。在 <a href="https://www.reddit.com/prefs/apps" target="_blank" class="underline font-mono">reddit.com/prefs/apps</a> 免费创建 script 类型应用，将 <code>REDDIT_CLIENT_ID</code> 与 <code>REDDIT_CLIENT_SECRET</code> 写入 <code>.env</code> 即可永久豁免机房 IP 拦截。
+                </p>
+            </div>
+
             <div id="sourcesList" class="space-y-2 max-h-60 overflow-y-auto pr-2"></div>
             <!-- 添加新监控源表单 -->
             <form onsubmit="addSource(event)" class="grid grid-cols-6 gap-2 pt-2 border-t border-[#EFEAE2]">
@@ -222,6 +237,17 @@ async function loadConfig() {
             if (!appConfig.has_gemini_key) {
                 document.getElementById('keyAlert').classList.remove('hidden');
                 document.getElementById('keyAlert').classList.add('flex');
+            }
+            const rDot = document.getElementById('redditStatusDot');
+            const rTitle = document.getElementById('redditStatusTitle');
+            if (rDot && rTitle) {
+                if (appConfig.has_reddit_auth) {
+                    rDot.className = "w-2 h-2 rounded-full bg-[#2E7D32]";
+                    rTitle.innerText = "Reddit 官方 API 已授权 (机房 IP 已豁免 403)";
+                } else {
+                    rDot.className = "w-2 h-2 rounded-full bg-[#D97706]";
+                    rTitle.innerText = "Reddit 处于公开匿名模式 (海外 VPS 需配置凭据防 403)";
+                }
             }
         }
     } catch (e) {

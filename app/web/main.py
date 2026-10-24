@@ -205,6 +205,7 @@ def get_config(username: str = Depends(verify_credentials)):
     return {
         "x_handle": settings.X_HANDLE,
         "has_gemini_key": bool(settings.GEMINI_API_KEY and settings.GEMINI_API_KEY != "your_gemini_api_key_here"),
+        "has_reddit_auth": bool((settings.REDDIT_CLIENT_ID and settings.REDDIT_CLIENT_SECRET) or settings.REDDIT_PROXY_URL),
         "scan_interval": settings.SCAN_INTERVAL_MINUTES,
         "triage_model": settings.TRIAGE_MODEL,
         "synthesis_model": settings.SYNTHESIS_MODEL,

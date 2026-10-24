@@ -9,7 +9,10 @@ from app.database import get_conn, is_signal_processed
 class RedditIngestor:
     def __init__(self):
         self.session = requests.Session()
-        self.session.headers.update({"User-Agent": settings.USER_AGENT})
+        self.session.headers.update({
+            "User-Agent": settings.USER_AGENT,
+            "Accept": "application/json"
+        })
         if settings.REDDIT_PROXY_URL:
             self.session.proxies = {
                 "http": settings.REDDIT_PROXY_URL,
@@ -19,28 +22,40 @@ class RedditIngestor:
         self.token_expiry: float = 0
 
     def _ensure_oauth(self):
-        """如果配置了官方免费 Script Key，自动获取 Token 绕过海外 VPS 机房 IP 封锁"""
+        """如果配置了官方免费 Script Key，自动获取 Token 绕过海外 VPS 机房 IP 403 封锁"""
         if not (settings.REDDIT_CLIENT_ID and settings.REDDIT_CLIENT_SECRET):
             return
         now = time.time()
         if self.oauth_token and now < self.token_expiry:
             return
         try:
-            auth = requests.auth.HTTPBasicAuth(settings.REDDIT_CLIENT_ID, settings.REDDIT_CLIENT_SECRET)
+            auth = requests.auth.HTTPBasicAuth(settings.REDDIT_CLIENT_ID.strip(), settings.REDDIT_CLIENT_SECRET.strip())
             data = {"grant_type": "client_credentials"}
-            resp = self.session.post("https://www.reddit.com/api/v1/access_token", auth=auth, data=data, timeout=10)
+            headers = {"User-Agent": settings.USER_AGENT}
+            resp = self.session.post(
+                "https://www.reddit.com/api/v1/access_token",
+                auth=auth,
+                data=data,
+                headers=headers,
+                timeout=12
+            )
             if resp.status_code == 200:
                 token_data = resp.json()
-                self.oauth_token = token_data["access_token"]
+                self.oauth_token = token_data.get("access_token")
                 self.token_expiry = now + token_data.get("expires_in", 3600) - 60
-                self.session.headers.update({"Authorization": f"bearer {self.oauth_token}"})
+                self.session.headers.update({"Authorization": f"Bearer {self.oauth_token}"})
+                print("   🔑 [Reddit OAuth] 官方 API Token 获取成功，已启用绿色通道！")
+            else:
+                print(f"   ⚠️ [Reddit OAuth] 获取 Token 失败 (HTTP {resp.status_code}): {resp.text[:200]}")
         except Exception as e:
-            print(f"[Reddit OAuth 告警] 获取 Token 失败，降级为公开接口: {e}")
+            print(f"   ⚠️ [Reddit OAuth 告警] 获取 Token 异常: {e}")
 
     def _build_url(self, path: str) -> str:
         self._ensure_oauth()
-        domain = "https://oauth.reddit.com" if self.oauth_token else "https://www.reddit.com"
-        return f"{domain}{path}"
+        if self.oauth_token:
+            # 在 oauth.reddit.com 上，标准 listing 既支持干净路径也支持 .json
+            return f"https://oauth.reddit.com{path}"
+        return f"https://www.reddit.com{path}"
 
     def fetch_qualified_signals(self, max_signals: int = 5) -> List[Dict[str, Any]]:
         conn = get_conn()
@@ -53,17 +68,25 @@ class RedditIngestor:
 
         for src in sources:
             if consecutive_403 >= 3:
-                print("   [Reddit] 检测到连续 403 阻断（机房 IP 或无代理），自动跳过剩余 Reddit 源以加速执行。")
+                print("   [Reddit] 检测到连续 403 阻断（海外 VPS 机房 IP 被 Reddit 拦截）。")
+                if not (settings.REDDIT_CLIENT_ID and settings.REDDIT_CLIENT_SECRET):
+                    print("   💡 解决方式：只需在 https://www.reddit.com/prefs/apps 免费创建 Script 应用，在 .env 中填入 REDDIT_CLIENT_ID 与 SECRET 即可彻底解除阻断！")
                 break
 
             sub = src["subreddit"]
             for feed in ["rising", "hot"]:
                 url = self._build_url(f"/r/{sub}/{feed}.json?limit=25&raw_json=1")
                 try:
-                    resp = self.session.get(url, timeout=8)
+                    resp = self.session.get(url, timeout=10)
+                    if resp.status_code == 401 and self.oauth_token:
+                        # Token 可能意外失效，重置重试一次
+                        self.oauth_token = None
+                        self._ensure_oauth()
+                        resp = self.session.get(url, timeout=10)
+
                     if resp.status_code == 403:
                         consecutive_403 += 1
-                        print(f"   [采集跳过] r/{sub}/{feed} HTTP 403 (需配置 REDDIT_PROXY_URL)")
+                        print(f"   [采集跳过] r/{sub}/{feed} HTTP 403 (海外 VPS 机房 IP 阻断，需配置 REDDIT_CLIENT_ID 或代理)")
                         break # 跳过该 sub 的后续 feed，进入下一个
                     if resp.status_code != 200:
                         print(f"   [采集跳过] r/{sub}/{feed} HTTP {resp.status_code}")
@@ -105,9 +128,9 @@ class RedditIngestor:
                                 "velocity": velocity,
                                 "controversy": controversy,
                             })
-                    time.sleep(1.2)
+                    time.sleep(1.0)
                 except Exception as e:
-                    print(f"[采集异常] r/{sub}: {e}")
+                    print(f"   [采集异常] r/{sub}: {e}")
 
         unique_map = {c["post_id"]: c for c in candidates}
         sorted_list = sorted(unique_map.values(), key=lambda x: (x["velocity"] * 2 + x["controversy"]), reverse=True)
@@ -120,7 +143,8 @@ class RedditIngestor:
         return top_signals
 
     def fetch_top_comments(self, raw_permalink: str, limit: int = 14) -> List[str]:
-        url = self._build_url(f"{raw_permalink.rstrip('/')}.json?sort=top&limit=25&raw_json=1")
+        clean_path = raw_permalink.rstrip('/')
+        url = self._build_url(f"{clean_path}.json?sort=top&limit=25&raw_json=1")
         comments = []
         try:
             resp = self.session.get(url, timeout=12)
@@ -141,5 +165,5 @@ class RedditIngestor:
                 if len(comments) >= limit:
                     break
         except Exception as e:
-            print(f"[评论拉取异常]: {e}")
+            print(f"   [评论拉取异常]: {e}")
         return comments
