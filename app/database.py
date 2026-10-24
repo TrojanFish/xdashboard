@@ -80,25 +80,29 @@ def init_db():
         )
     """)
 
-    # 预置默认监控源（若为空）
-    c.execute("SELECT COUNT(*) FROM watch_sources")
-    if c.fetchone()[0] == 0:
-        default_sources = [
-            ("LocalLLaMA", "AI_DEV", 25, 0.4, 0.35),
-            ("ClaudeAI", "AI_DEV", 25, 0.4, 0.35),
-            ("singularity", "AI_DEV", 40, 0.7, 0.40),
-            ("SaaS", "AI_DEV", 20, 0.3, 0.40),
-            ("ChatGPTCoding", "AI_DEV", 20, 0.3, 0.35),
-            ("wallstreetbets", "FINANCE", 60, 0.8, 0.45),
-            ("stocks", "FINANCE", 35, 0.5, 0.40),
-            ("algotrading", "FINANCE", 20, 0.25, 0.35),
-            ("ValueInvesting", "FINANCE", 25, 0.3, 0.35),
-            ("options", "FINANCE", 25, 0.35, 0.40),
-        ]
-        c.executemany(
-            "INSERT INTO watch_sources (subreddit, category, min_score, min_velocity, min_controversy) VALUES (?, ?, ?, ?, ?)",
-            default_sources
-        )
+    # 预置默认监控源（使用 INSERT OR IGNORE 保证已有库平滑补全）
+    default_sources = [
+        # 1. 深度 AI 与独立开发
+        ("LocalLLaMA", "AI_DEV", 25, 0.4, 0.35),
+        ("ClaudeAI", "AI_DEV", 25, 0.4, 0.35),
+        ("singularity", "AI_DEV", 40, 0.7, 0.40),
+        ("SaaS", "AI_DEV", 20, 0.3, 0.40),
+        ("ChatGPTCoding", "AI_DEV", 20, 0.3, 0.35),
+        # 2. 华尔街宏观、美股期权与量化
+        ("wallstreetbets", "FINANCE", 60, 0.8, 0.45),
+        ("stocks", "FINANCE", 35, 0.5, 0.40),
+        ("algotrading", "FINANCE", 20, 0.25, 0.35),
+        ("ValueInvesting", "FINANCE", 25, 0.3, 0.35),
+        ("options", "FINANCE", 25, 0.35, 0.40),
+        # 3. 头部纯正加密资本与链上金融（严选高信噪比，坚决剔除土狗与Meme水贴）
+        ("BitcoinMarkets", "FINANCE", 40, 0.45, 0.35),  # BTC 宏观衍生品、机构资金流与主力持仓分析
+        ("ethfinance", "FINANCE", 30, 0.35, 0.35),      # ETH 宏观基本面、L2 资本效率与严谨技术分析 (无垃圾贴)
+        ("defi", "FINANCE", 25, 0.30, 0.35),            # 链上流动性架构、真实收益协议与借贷资本清算机制
+    ]
+    c.executemany(
+        "INSERT OR IGNORE INTO watch_sources (subreddit, category, min_score, min_velocity, min_controversy) VALUES (?, ?, ?, ?, ?)",
+        default_sources
+    )
 
     # 预置默认「AI × 金融复合人设」（解决单号跨界问题）
     c.execute("SELECT COUNT(*) FROM personas")
