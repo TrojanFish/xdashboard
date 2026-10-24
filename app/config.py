@@ -15,10 +15,11 @@ class Settings:
     TRIAGE_MODEL: str = os.getenv("TRIAGE_MODEL", "gemini-2.5-flash")
     SYNTHESIS_MODEL: str = os.getenv("SYNTHESIS_MODEL", "gemini-3.1-pro-preview")
 
-    # VPS 防 403 配置
+    # VPS 防 403 配置（支持住宅代理或浏览器已登录 Cookie）
     REDDIT_PROXY_URL: str = os.getenv("REDDIT_PROXY_URL", "")
+    REDDIT_COOKIE: str = os.getenv("REDDIT_COOKIE", "")
     REDDIT_CLIENT_ID: str = os.getenv("REDDIT_CLIENT_ID", "")
     REDDIT_CLIENT_SECRET: str = os.getenv("REDDIT_CLIENT_SECRET", "")
-    USER_AGENT: str = "linux:alpha.studio.personal:v1.0 (by /u/alpha_curator)"
+    USER_AGENT: str = os.getenv("REDDIT_USER_AGENT", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
 
 settings = Settings()

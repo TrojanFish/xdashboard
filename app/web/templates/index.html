@@ -42,7 +42,7 @@
             <span class="w-2.5 h-2.5 rounded-full bg-[#386641] animate-pulse"></span>
             <h1 class="font-bold text-base tracking-tight text-[#201E1C] font-sans">
                 PERSONAL ALPHA STUDIO 
-                <span class="text-xs font-normal text-[#757067] ml-2 font-mono">Reddit + GitHub Trending → X Editorial Alpha</span>
+                <span class="text-xs font-normal text-[#757067] ml-2 font-mono">GitHub Trending + Hacker News + Reddit → X Alpha</span>
             </h1>
         </div>
         <div class="flex items-center gap-2.5">
@@ -50,6 +50,7 @@
             <div class="flex bg-[#F3EFE9] p-1 rounded-lg border border-[#E3DDD2] text-xs font-sans">
                 <button onclick="setFilter('category', 'ALL')" id="cat-ALL" class="px-2.5 py-1 rounded-md bg-[#FFFFFF] text-[#201E1C] font-medium shadow-sm">全部赛道</button>
                 <button onclick="setFilter('category', 'GITHUB_TRENDING')" id="cat-GITHUB_TRENDING" class="px-2.5 py-1 rounded-md text-[#6E6860] hover:text-[#201E1C] flex items-center gap-1">⭐ GitHub</button>
+                <button onclick="setFilter('category', 'HACKER_NEWS')" id="cat-HACKER_NEWS" class="px-2.5 py-1 rounded-md text-[#6E6860] hover:text-[#201E1C] flex items-center gap-1">🟠 Hacker News</button>
                 <button onclick="setFilter('category', 'AI_DEV')" id="cat-AI_DEV" class="px-2.5 py-1 rounded-md text-[#6E6860] hover:text-[#201E1C]">AI / 开发</button>
                 <button onclick="setFilter('category', 'FINANCE')" id="cat-FINANCE" class="px-2.5 py-1 rounded-md text-[#6E6860] hover:text-[#201E1C]">金融 / 交易</button>
             </div>
@@ -267,7 +268,7 @@ async function logout() {
 function setFilter(key, val) {
     filters[key] = val;
     if (key === 'category') {
-        ['ALL', 'GITHUB_TRENDING', 'AI_DEV', 'FINANCE'].forEach(c => {
+        ['ALL', 'GITHUB_TRENDING', 'HACKER_NEWS', 'AI_DEV', 'FINANCE'].forEach(c => {
             const btn = document.getElementById('cat-' + c);
             if (btn) {
                 btn.className = c === val
@@ -304,11 +305,17 @@ function renderFeedList() {
     container.innerHTML = drafts.map(d => {
         const isSelected = d.post_id === currentId;
         const isGithub = d.category === 'GITHUB_TRENDING';
+        const isHN = d.subreddit === 'hackernews';
         const isRaw = d.status === 'raw_unprocessed';
         
         let badgeColor = 'bg-[#FEF3E2] text-[#B45309] border-[#FDE68A]';
+        let subText = 'r/' + d.subreddit;
         if (isGithub) {
             badgeColor = 'bg-[#F3EFFB] text-[#553C9A] border-[#DDD3F5]';
+            subText = '🐙 ' + d.subreddit;
+        } else if (isHN) {
+            badgeColor = 'bg-[#FFF4E5] text-[#C2410C] border-[#FED7AA]';
+            subText = '🟠 Hacker News';
         } else if (d.category === 'AI_DEV') {
             badgeColor = 'bg-[#EBF3FA] text-[#1E6091] border-[#D0E3F3]';
         }
@@ -328,25 +335,28 @@ function renderFeedList() {
                    <span>⭐ +${d.score} stars</span>
                </div>`
             : `<div class="flex items-center gap-2 text-[#7A746B] font-mono text-xs">
-                   <span title="增长斜率">⚡ ${d.velocity}/m</span>
-                   <span title="评论争议比">🔥 ${d.controversy}</span>
+                   <span title="点赞/增长斜率">▲ ${d.score} · ⚡ ${d.velocity}/m</span>
+                   <span title="评论争议比">💬 ${d.num_comments}</span>
                </div>`;
 
-        const footerSnippet = isGithub
-            ? `<div class="flex items-center gap-1.5"><span>🐙 开源拆解</span>${tierBadge}</div>
-               <span class="text-[#553C9A] font-mono text-[10px]">${isRaw ? '原始线索' : (d.narrative_framework || 'Repo Teardown')}</span>`
-            : `<div class="flex items-center gap-1.5"><span>▲ ${d.score} · 💬 ${d.num_comments}</span>${tierBadge}</div>
-               <span class="text-[#CC5A2B] font-mono text-[10px]">${isRaw ? '原始线索' : (d.narrative_framework || '')}</span>`;
+        let footerPrefix = `<span>▲ ${d.score} · 💬 ${d.num_comments}</span>`;
+        if (isGithub) footerPrefix = `<span>🐙 开源拆解</span>`;
+        else if (isHN) footerPrefix = `<span>🟠 硅谷大厂争议</span>`;
+
+        let frameworkColor = 'text-[#CC5A2B]';
+        if (isGithub) frameworkColor = 'text-[#553C9A]';
+        else if (isHN) frameworkColor = 'text-[#C2410C]';
 
         return `
         <div onclick="selectDraft('${d.post_id}')" class="p-4 cursor-pointer transition hover:bg-[#FFFFFF]/70 ${isSelected ? 'bg-[#FFFFFF] border-l-4 border-l-[#CC5A2B] shadow-sm' : ''}">
             <div class="flex items-center justify-between text-xs mb-1.5">
-                <span class="px-2 py-0.5 rounded border ${badgeColor} font-mono">${isGithub ? '🐙 ' + d.subreddit : 'r/' + d.subreddit}</span>
+                <span class="px-2 py-0.5 rounded border ${badgeColor} font-mono">${subText}</span>
                 ${metricsSnippet}
             </div>
             <h3 class="text-sm font-semibold text-[#201E1C] line-clamp-2 leading-snug mb-2 select-text font-sans">${d.title}</h3>
             <div class="flex items-center justify-between text-xs text-[#7A746B]">
-                ${footerSnippet}
+                <div class="flex items-center gap-1.5">${footerPrefix}${tierBadge}</div>
+                <span class="${frameworkColor} font-mono text-[10px]">${isRaw ? '原始线索' : (d.narrative_framework || '')}</span>
             </div>
         </div>`;
     }).join('');
@@ -403,13 +413,21 @@ function renderEditor() {
     const item = drafts.find(d => d.post_id === currentId);
     if (!item) return;
     const isGithub = item.category === 'GITHUB_TRENDING';
+    const isHN = item.subreddit === 'hackernews';
     const isRaw = item.status === 'raw_unprocessed';
-    const sourceLabel = isGithub ? 'GitHub ↗' : 'Reddit ↗';
-    const sourceClass = isGithub ? 'text-[#553C9A]' : 'text-[#CC5A2B]';
+    let sourceLabel = 'Reddit ↗';
+    let sourceClass = 'text-[#CC5A2B]';
+    if (isGithub) {
+        sourceLabel = 'GitHub ↗';
+        sourceClass = 'text-[#553C9A]';
+    } else if (isHN) {
+        sourceLabel = 'Hacker News ↗';
+        sourceClass = 'text-[#C2410C]';
+    }
 
     const metricsSnippet = isGithub
         ? `⭐ +${item.score} stars today`
-        : `⚡ 斜率: ${item.velocity}/m · 争议比: ${item.controversy} · 赞: ${item.score} · 评: ${item.num_comments}`;
+        : (isHN ? `▲ ${item.score} points · 💬 ${item.num_comments} comments` : `⚡ 斜率: ${item.velocity}/m · 争议比: ${item.controversy} · 赞: ${item.score} · 评: ${item.num_comments}`);
 
     // 分支 1：处于未二创的原始情报状态 (待手动二创模式)
     if (isRaw) {
@@ -588,7 +606,7 @@ ${item.selftext || item.title || '（该项目为开源代码库或短贴，点�
                                 <span class="w-2.5 h-2.5 rounded-full bg-[#5A9E6F]"></span>
                                 <span class="text-[11px] font-mono text-[#7A746B] ml-2 uppercase tracking-widest font-semibold">${item.category} // ${(item.card && item.card.type) || 'ALPHA'}</span>
                             </div>
-                            <span class="text-[11px] font-mono ${isGithub ? 'text-[#553C9A] bg-[#F3EFFB] border-[#DDD3F5]' : 'text-[#CC5A2B] bg-[#FFF2ED] border-[#FCD9CC]'} border px-2 py-0.5 rounded font-semibold">${isGithub ? 'GITHUB ALPHA' : 'RESEARCH MEMO'}</span>
+                            <span class="text-[11px] font-mono ${isGithub ? 'text-[#553C9A] bg-[#F3EFFB] border-[#DDD3F5]' : (isHN ? 'text-[#C2410C] bg-[#FFF4E5] border-[#FED7AA]' : 'text-[#CC5A2B] bg-[#FFF2ED] border-[#FCD9CC]')} border px-2 py-0.5 rounded font-semibold">${isGithub ? 'GITHUB ALPHA' : (isHN ? 'Y COMBINATOR / HN' : 'RESEARCH MEMO')}</span>
                         </div>
 
                         <div class="my-2">
@@ -600,7 +618,7 @@ ${item.selftext || item.title || '（该项目为开源代码库或短贴，点�
                         </div>
 
                         <div class="flex items-center justify-between pt-3 border-t border-[#E6E0D4] text-[10px] font-mono text-[#8C867D]">
-                            <span>${isGithub ? 'SYNTHESIZED FROM GITHUB OPEN SOURCE ARCHITECTURES' : 'SYNTHESIZED FROM PRACTITIONER INSIGHTS'}</span>
+                            <span>${isGithub ? 'SYNTHESIZED FROM GITHUB OPEN SOURCE ARCHITECTURES' : (isHN ? 'SYNTHESIZED FROM SILICON VALLEY PRACTITIONER DEBATES' : 'SYNTHESIZED FROM PRACTITIONER INSIGHTS')}</span>
                             <span contenteditable="true" class="text-[#CC5A2B] font-semibold outline-none">${appConfig.x_handle || '@YourHandle'}</span>
                         </div>
                     </div>

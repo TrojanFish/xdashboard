@@ -5,6 +5,7 @@ from app.config import settings
 from app.database import save_signal_and_draft, save_raw_signal_only, get_setting
 from app.ingestors.reddit import RedditIngestor
 from app.ingestors.github import GitHubTrendingIngestor
+from app.ingestors.hackernews import HackerNewsIngestor
 from app.engine.synthesizer import SynthesisEngine
 
 _scan_lock = threading.Lock()
@@ -55,13 +56,14 @@ def execute_radar_cycle():
     _scan_state["error"] = None
 
     try:
-        print("🛰️ [Alpha Radar] 开始执行全网情报扫描（优先 GitHub Trending + Reddit）...")
+        print("🛰️ [Alpha Radar] 开始执行全网情报扫描（GitHub Trending + Hacker News + Reddit）...")
         github_ingestor = GitHubTrendingIngestor()
+        hn_ingestor = HackerNewsIngestor()
         reddit_ingestor = RedditIngestor()
 
         all_signals = []
 
-        # 1. 优先抓取 GitHub Trending 热门开源爆款（速度快、无封禁风险）
+        # 1. 抓取 GitHub Trending 热门开源爆款（速度快、无封禁风险）
         try:
             gh_signals = github_ingestor.fetch_trending_signals(max_signals=3)
             all_signals.extend(gh_signals)
@@ -69,12 +71,21 @@ def execute_radar_cycle():
         except Exception as e:
             print(f"   ❌ GitHub 采集失败: {e}")
 
-        # 2. 抓取 Reddit 高潜力贴（遇连续403自动熔断跳过）
-        _scan_state["message"] = f"已捕获 {len(all_signals)} 个 GitHub 项目，正在扫描 Reddit 社区..."
+        # 2. 抓取 Hacker News 硅谷顶级架构师/AI/资本深度议题（官方 REST API，海外 VPS 零封禁风险）
+        _scan_state["message"] = f"已捕获 {len(all_signals)} 个 GitHub 项目，正在扫描 Hacker News 深度讨论..."
         try:
-            reddit_signals = reddit_ingestor.fetch_qualified_signals(max_signals=3)
+            hn_signals = hn_ingestor.fetch_top_signals(max_signals=3)
+            all_signals.extend(hn_signals)
+        except Exception as e:
+            print(f"   ❌ Hacker News 采集失败: {e}")
+
+        # 3. 抓取 Reddit 社区热贴（遇 403 自动平滑跳过，保证流水线不中断）
+        _scan_state["message"] = f"已捕获 {len(all_signals)} 条核心线索，正在巡检 Reddit 社区..."
+        try:
+            reddit_signals = reddit_ingestor.fetch_qualified_signals(max_signals=2)
             all_signals.extend(reddit_signals)
-            print(f"   [Reddit] 筛选出 {len(reddit_signals)} 条高斜率信号。")
+            if reddit_signals:
+                print(f"   [Reddit] 筛选出 {len(reddit_signals)} 条高斜率信号。")
         except Exception as e:
             print(f"   ❌ Reddit 采集失败: {e}")
 

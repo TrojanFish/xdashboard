@@ -242,7 +242,11 @@ def get_drafts(category: str = "ALL", status: str = "all_active", username: str 
         WHERE 1=1
     """
     params = []
-    if category != "ALL":
+    if category == "HACKER_NEWS":
+        query += " AND r.subreddit = 'hackernews'"
+    elif category == "GITHUB_TRENDING":
+        query += " AND r.category = 'GITHUB_TRENDING'"
+    elif category != "ALL":
         query += " AND r.category = ?"
         params.append(category)
     if status == "all_active":

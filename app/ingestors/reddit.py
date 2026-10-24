@@ -13,6 +13,8 @@ class RedditIngestor:
             "User-Agent": settings.USER_AGENT,
             "Accept": "application/json"
         })
+        if settings.REDDIT_COOKIE:
+            self.session.headers.update({"Cookie": settings.REDDIT_COOKIE.strip()})
         if settings.REDDIT_PROXY_URL:
             self.session.proxies = {
                 "http": settings.REDDIT_PROXY_URL,
