@@ -1,3 +1,4 @@
+import re
 from typing import Dict, Any, List
 from google import genai
 from google.genai import types
@@ -8,16 +9,19 @@ from app.engine.schemas import TriageResult, SynthesizedDraft
 FALLBACK_TRIAGE_MODELS = [
     settings.TRIAGE_MODEL,
     "gemini-2.5-flash",
+    "gemini-3.8-flash",
+    "gemini-3.1-pro-preview",
     "gemini-2.0-flash",
     "gemini-1.5-flash",
 ]
 
 FALLBACK_SYNTHESIS_MODELS = [
     settings.SYNTHESIS_MODEL,
+    "gemini-3.1-pro-preview",
+    "gemini-2.5-flash",
+    "gemini-3.8-flash",
     "gemini-2.5-pro",
     "gemini-2.0-flash",
-    "gemini-1.5-pro",
-    "gemini-1.5-flash",
 ]
 
 
@@ -32,10 +36,13 @@ class SynthesisEngine:
         return dict(row)
 
     def _generate_with_fallback(self, contents: str, schema_class, candidate_models: List[str], temperature: float = 0.5):
-        """模型自动容错回退机制，确保 API Key 无论处于哪种权限均能平滑调用"""
+        """模型自动容错回退机制，遇到弃用自动抓取 Google 官方报错推荐的新模型并自动重试"""
         last_err = None
         seen_models = set()
-        for model_name in candidate_models:
+        queue = list(candidate_models)
+
+        while queue:
+            model_name = queue.pop(0)
             if not model_name or model_name in seen_models:
                 continue
             seen_models.add(model_name)
@@ -52,7 +59,14 @@ class SynthesisEngine:
                 return resp
             except Exception as e:
                 last_err = e
-                print(f"      [AI 降级重试] 模型 {model_name} 暂不可用 ({e})，尝试备选模型...")
+                err_str = str(e)
+                print(f"      [AI 降级重试] 模型 {model_name} 暂不可用 ({err_str[:120]}...)，尝试备选模型...")
+                # 动态自适应：从 Google 官方错误信息中自动嗅探推荐的新模型（如 gemini-3.1-pro-preview）
+                recommended = re.findall(r'models/([a-zA-Z0-9.-]+)', err_str)
+                for rec in recommended:
+                    if rec not in seen_models and rec not in queue and "gemini" in rec:
+                        print(f"      💡 [动态自适应] 捕获到 Google 官方推荐新模型: {rec}，已排入优先调用队列！")
+                        queue.insert(0, rec)
         raise last_err
 
     def quick_triage(self, signal: Dict[str, Any]) -> TriageResult:
