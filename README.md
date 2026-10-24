@@ -42,6 +42,9 @@
   - 严格封杀 *delve, tapestry, game-changer, 🚀, 🧵* 等机械公关套话。
 - **⏱️ 后台非阻塞定时巡航**
   - 基于 APScheduler 的自动化引擎，全天候静默扫描（Reddit + GitHub Trending）并二创，草稿入库待审。
+- **📡 W3C 标准 RSS 2.0 订阅源分发（新增）**
+  - 公开输出 `/rss.xml` 与 `/feed.xml`，自动包含已生成的优质二创文章与完整长文内容。
+  - 支持个人独立博客（Astro, Ghost, Hugo, Next.js）、Feedly/Inoreader 阅读器、Substack 或自动化流水线（Zapier, Make）零代码订阅与全网自动同步。
 - **🔒 企业级公网安全防护与 Claude 暖色独立工作台**
   - 默认使用非标服务端口（`28828`），搭载 HMAC-SHA256 签名会话防篡改，告别刺眼黑底与简陋弹窗，提供沉浸式 Claude 暖色燕麦纸本风格登录页与一键安全注销。
 

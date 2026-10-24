@@ -4,6 +4,8 @@ import json
 import os
 import sys
 import time
+import xml.sax.saxutils as saxutils
+from datetime import datetime, timezone
 from typing import Optional
 from fastapi import FastAPI, HTTPException, Depends, status, BackgroundTasks, Request, Response, Cookie
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -128,6 +130,69 @@ def index(alpha_session: Optional[str] = Cookie(default=None)):
     template_path = os.path.join(os.path.dirname(__file__), "templates", "index.html")
     with open(template_path, "r", encoding="utf-8") as f:
         return f.read()
+
+
+@app.get("/rss.xml", response_class=Response)
+@app.get("/feed.xml", response_class=Response)
+def get_rss_feed(request: Request):
+    """输出标准 W3C RSS 2.0 规范源，用于自动同步至个人博客、RSS 阅读器或邮件通讯"""
+    conn = get_conn()
+    query = """
+        SELECT d.*, r.title as raw_title, r.permalink as raw_link, r.category as raw_category, r.subreddit
+        FROM drafts d
+        JOIN raw_signals r ON d.post_id = r.post_id
+        WHERE d.worth_posting = 1 AND (d.status = 'published' OR d.status = 'pending')
+        ORDER BY d.created_at DESC LIMIT 50
+    """
+    rows = conn.execute(query).fetchall()
+    conn.close()
+
+    base_url = str(request.base_url).rstrip("/")
+    build_date = datetime.now(timezone.utc).strftime("%a, %d %b %Y %H:%M:%S GMT")
+
+    items_xml = []
+    for r in rows:
+        title = saxutils.escape(r["raw_title"] or "Alpha Intelligence Memo")
+        link = saxutils.escape(r["raw_link"] or base_url)
+        desc_text = r["short_post"] or (r["long_post"][:300] if r["long_post"] else "")
+        desc = saxutils.escape(desc_text)
+        category = saxutils.escape(r["raw_category"] or "Tech")
+        guid = saxutils.escape(f"alpha_{r['post_id']}")
+
+        pub_date = build_date
+        if r["created_at"]:
+            try:
+                dt = datetime.fromisoformat(r["created_at"])
+                pub_date = dt.strftime("%a, %d %b %Y %H:%M:%S GMT")
+            except Exception:
+                pass
+
+        body_content = r["long_post"] or r["short_post"] or ""
+        items_xml.append(f"""    <item>
+      <title>{title}</title>
+      <link>{link}</link>
+      <guid isPermaLink="false">{guid}</guid>
+      <category>{category}</category>
+      <pubDate>{pub_date}</pubDate>
+      <description>{desc}</description>
+      <content:encoded><![CDATA[{body_content}]]></content:encoded>
+    </item>""")
+
+    items_joined = "\n".join(items_xml)
+    xml_content = f"""<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Personal Alpha Studio — Research Memos</title>
+    <link>{base_url}</link>
+    <description>AI &amp; Capital Cross-Domain Intelligence &amp; Open Source Teardowns</description>
+    <language>en</language>
+    <lastBuildDate>{build_date}</lastBuildDate>
+    <atom:link href="{base_url}/rss.xml" rel="self" type="application/rss+xml"/>
+{items_joined}
+  </channel>
+</rss>"""
+
+    return Response(content=xml_content, media_type="application/xml")
 
 
 @app.get("/api/config")
