@@ -17,12 +17,13 @@
     <header class="h-14 border-b border-zinc-800 bg-zinc-950 px-6 flex items-center justify-between shrink-0">
         <div class="flex items-center gap-3">
             <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <h1 class="font-bold text-base tracking-wider text-zinc-100">PERSONAL ALPHA STUDIO <span class="text-xs font-normal text-zinc-500 ml-2">AI × Finance Cross-Domain Master Studio</span></h1>
+            <h1 class="font-bold text-base tracking-wider text-zinc-100">PERSONAL ALPHA STUDIO <span class="text-xs font-normal text-zinc-500 ml-2">Reddit + GitHub Trending → X Alpha</span></h1>
         </div>
         <div class="flex items-center gap-3">
             <!-- 赛道筛选 -->
             <div class="flex bg-zinc-900 p-1 rounded-lg border border-zinc-800 text-xs">
                 <button onclick="setFilter('category', 'ALL')" id="cat-ALL" class="px-3 py-1 rounded-md bg-zinc-800 text-white font-medium">全部赛道</button>
+                <button onclick="setFilter('category', 'GITHUB_TRENDING')" id="cat-GITHUB_TRENDING" class="px-3 py-1 rounded-md text-zinc-400 hover:text-white flex items-center gap-1">⭐ GitHub 趋势</button>
                 <button onclick="setFilter('category', 'AI_DEV')" id="cat-AI_DEV" class="px-3 py-1 rounded-md text-zinc-400 hover:text-white">AI / 开发</button>
                 <button onclick="setFilter('category', 'FINANCE')" id="cat-FINANCE" class="px-3 py-1 rounded-md text-zinc-400 hover:text-white">金融 / 交易</button>
             </div>
@@ -34,7 +35,7 @@
             </select>
             <button onclick="openSourcesModal()" class="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-medium px-3.5 py-1.5 rounded-lg transition">⚙️ 监控源配置</button>
             <button onclick="triggerScan()" id="scanBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5">
-                <span>⚡ 立即扫描 Reddit</span>
+                <span>⚡ 扫描全网 (Reddit+GitHub)</span>
             </button>
         </div>
     </header>
@@ -95,11 +96,13 @@ function showToast(msg) {
 function setFilter(key, val) {
     filters[key] = val;
     if (key === 'category') {
-        ['ALL', 'AI_DEV', 'FINANCE'].forEach(c => {
+        ['ALL', 'GITHUB_TRENDING', 'AI_DEV', 'FINANCE'].forEach(c => {
             const btn = document.getElementById('cat-' + c);
-            btn.className = c === val
-                ? "px-3 py-1 rounded-md bg-zinc-800 text-white font-medium"
-                : "px-3 py-1 rounded-md text-zinc-400 hover:text-white";
+            if (btn) {
+                btn.className = c === val
+                    ? "px-3 py-1 rounded-md bg-zinc-800 text-white font-medium"
+                    : "px-3 py-1 rounded-md text-zinc-400 hover:text-white";
+            }
         });
     }
     loadDrafts();
@@ -117,7 +120,7 @@ async function loadDrafts() {
         const stillExists = drafts.find(d => d.post_id === currentId);
         selectDraft(stillExists ? currentId : drafts[0].post_id);
     } else {
-        document.getElementById('editorPane').innerHTML = `<div class="h-full flex items-center justify-center text-zinc-600 text-sm">当前筛选条件下暂无草稿，可点击右上角「立即扫描 Reddit」</div>`;
+        document.getElementById('editorPane').innerHTML = `<div class="h-full flex items-center justify-center text-zinc-600 text-sm">当前筛选条件下暂无草稿，可点击右上角「⚡ 扫描全网情报」</div>`;
     }
 }
 
@@ -129,20 +132,39 @@ function renderFeedList() {
     }
     container.innerHTML = drafts.map(d => {
         const isSelected = d.post_id === currentId;
-        const badgeColor = d.category === 'AI_DEV' ? 'bg-sky-500/10 text-sky-400 border-sky-500/30' : 'bg-amber-500/10 text-amber-400 border-amber-500/30';
+        const isGithub = d.category === 'GITHUB_TRENDING';
+        
+        let badgeColor = 'bg-amber-500/10 text-amber-400 border-amber-500/30';
+        if (isGithub) {
+            badgeColor = 'bg-purple-500/10 text-purple-400 border-purple-500/30';
+        } else if (d.category === 'AI_DEV') {
+            badgeColor = 'bg-sky-500/10 text-sky-400 border-sky-500/30';
+        }
+
+        const metricsSnippet = isGithub
+            ? `<div class="flex items-center gap-1.5 text-purple-300 font-mono text-xs">
+                   <span>⭐ +${d.score} stars today</span>
+               </div>`
+            : `<div class="flex items-center gap-2 text-zinc-400 font-mono">
+                   <span title="增长斜率">⚡ ${d.velocity}/m</span>
+                   <span title="评论争议比">🔥 ${d.controversy}</span>
+               </div>`;
+
+        const footerSnippet = isGithub
+            ? `<span>开源项目拆解</span>
+               <span class="text-purple-400 font-mono text-[10px]">${d.narrative_framework || 'Repo Teardown'}</span>`
+            : `<span>▲ ${d.score} · 💬 ${d.num_comments}</span>
+               <span class="text-indigo-400 font-mono text-[10px]">${d.narrative_framework || ''}</span>`;
+
         return `
         <div onclick="selectDraft('${d.post_id}')" class="p-4 cursor-pointer transition hover:bg-zinc-900/70 ${isSelected ? 'bg-zinc-900 border-l-2 border-l-indigo-500' : ''}">
             <div class="flex items-center justify-between text-xs mb-1.5">
-                <span class="px-2 py-0.5 rounded border ${badgeColor} font-mono">r/${d.subreddit}</span>
-                <div class="flex items-center gap-2 text-zinc-400 font-mono">
-                    <span title="增长斜率">⚡ ${d.velocity}/m</span>
-                    <span title="评论争议比">🔥 ${d.controversy}</span>
-                </div>
+                <span class="px-2 py-0.5 rounded border ${badgeColor} font-mono">${isGithub ? '🐙 ' + d.subreddit : 'r/' + d.subreddit}</span>
+                ${metricsSnippet}
             </div>
             <h3 class="text-sm font-medium text-zinc-200 line-clamp-2 leading-snug mb-2 select-text">${d.title}</h3>
             <div class="flex items-center justify-between text-xs text-zinc-500">
-                <span>▲ ${d.score} · 💬 ${d.num_comments}</span>
-                <span class="text-indigo-400 font-mono text-[10px]">${d.narrative_framework || ''}</span>
+                ${footerSnippet}
             </div>
         </div>`;
     }).join('');
@@ -160,6 +182,7 @@ function renderEditor() {
     if (!item) return;
     const hooks = item.hooks || [""];
     const metrics = item.card.metrics || [];
+    const isGithub = item.category === 'GITHUB_TRENDING';
 
     const hooksHtml = hooks.map((h, idx) => `
         <div onclick="switchHook(${idx})" class="p-3 rounded-lg border cursor-pointer transition text-sm select-text ${idx === selectedHookIdx ? 'border-indigo-500 bg-indigo-950/20 text-zinc-100' : 'border-zinc-800 bg-zinc-900/50 text-zinc-400 hover:border-zinc-700'}">
@@ -181,15 +204,18 @@ function renderEditor() {
         </div>`;
     }).join('');
 
+    const sourceLabel = isGithub ? 'GitHub ↗' : 'Reddit ↗';
+    const sourceClass = isGithub ? 'text-purple-400' : 'text-indigo-400';
+
     document.getElementById('editorPane').innerHTML = `
         <div class="max-w-6xl mx-auto space-y-6">
             <!-- 原帖信息与操作栏 -->
             <div class="flex items-center justify-between bg-zinc-900/80 border border-zinc-800 p-4 rounded-xl">
                 <div class="space-y-1 pr-4">
                     <div class="text-xs text-zinc-400 flex items-center gap-2">
-                        <span>叙事框架: <b class="text-indigo-400 font-mono">${item.narrative_framework}</b></span>
+                        <span>叙事框架: <b class="${sourceClass} font-mono">${item.narrative_framework || 'Alpha Synthesis'}</b></span>
                         <span>· 原始来源:</span>
-                        <a href="${item.permalink}" target="_blank" class="text-indigo-400 hover:underline font-mono">Reddit ↗</a>
+                        <a href="${item.permalink}" target="_blank" class="${sourceClass} hover:underline font-mono">${sourceLabel}</a>
                     </div>
                     <div class="text-sm font-semibold text-zinc-200 select-text">${item.title}</div>
                 </div>
@@ -254,7 +280,7 @@ function renderEditor() {
                                 <span class="w-2.5 h-2.5 rounded-full bg-emerald-500/80"></span>
                                 <span class="text-[11px] font-mono text-zinc-400 ml-2 uppercase tracking-widest">${item.category} // ${item.card.type || 'ALPHA'}</span>
                             </div>
-                            <span class="text-[11px] font-mono text-indigo-400 bg-indigo-950/50 border border-indigo-500/30 px-2 py-0.5 rounded">REAL-WORLD SIGNAL</span>
+                            <span class="text-[11px] font-mono ${isGithub ? 'text-purple-400 bg-purple-950/50 border-purple-500/30' : 'text-indigo-400 bg-indigo-950/50 border-indigo-500/30'} border px-2 py-0.5 rounded">${isGithub ? 'GITHUB ALPHA' : 'REAL-WORLD SIGNAL'}</span>
                         </div>
 
                         <div class="my-2">
@@ -266,7 +292,7 @@ function renderEditor() {
                         </div>
 
                         <div class="flex items-center justify-between pt-3 border-t border-zinc-800/60 text-[10px] font-mono text-zinc-500">
-                            <span>SYNTHESIZED FROM PRACTITIONER DEBATES</span>
+                            <span>${isGithub ? 'SYNTHESIZED FROM GITHUB OPEN SOURCE ARCHITECTURES' : 'SYNTHESIZED FROM PRACTITIONER DEBATES'}</span>
                             <span contenteditable="true" class="text-zinc-400 outline-none">@YourHandle</span>
                         </div>
                     </div>
@@ -290,7 +316,6 @@ function switchHook(idx) {
     lines[0] = hook;
     box.value = lines.join('\n\n');
     updateCount();
-    // Re-render hook highlights without full editor re-render
     renderFeedList();
 }
 
@@ -352,18 +377,18 @@ async function saveEdits() {
 
 async function triggerScan() {
     const btn = document.getElementById('scanBtn');
-    btn.innerHTML = '<span class="animate-spin">⏳</span><span>扫描中...</span>';
+    btn.innerHTML = '<span class="animate-spin">⏳</span><span>扫描全网中...</span>';
     btn.disabled = true;
     try {
         const res = await fetch('/api/scan', { method: 'POST' });
         const data = await res.json();
-        showToast("🛰️ " + (data.message || "扫描已启动"));
+        showToast("🛰️ " + (data.message || "全网扫描已启动"));
         setTimeout(() => loadDrafts(), 8000);
     } catch (e) {
         showToast("❌ 扫描启动失败");
     } finally {
         setTimeout(() => {
-            btn.innerHTML = '<span>⚡ 立即扫描 Reddit</span>';
+            btn.innerHTML = '<span>⚡ 扫描全网 (Reddit+GitHub)</span>';
             btn.disabled = false;
         }, 5000);
     }

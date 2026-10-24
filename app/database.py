@@ -121,9 +121,15 @@ def init_db():
 
 def is_signal_processed(post_id: str) -> bool:
     conn = get_conn()
-    row = conn.execute("SELECT 1 FROM raw_signals WHERE post_id = ?", (post_id,)).fetchone()
-    conn.close()
-    return row is not None
+    try:
+        row = conn.execute("SELECT 1 FROM raw_signals WHERE post_id = ?", (post_id,)).fetchone()
+        conn.close()
+        return row is not None
+    except sqlite3.OperationalError:
+        conn.close()
+        init_db()
+        return False
+
 
 
 def save_signal_and_draft(signal: Dict[str, Any], draft_data: Dict[str, Any], persona_id: int = 1):
