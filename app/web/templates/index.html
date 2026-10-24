@@ -45,30 +45,56 @@
                 <span class="text-xs font-normal text-[#757067] ml-2 font-mono">Reddit + GitHub Trending → X Editorial Alpha</span>
             </h1>
         </div>
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2.5">
             <!-- 赛道筛选 -->
             <div class="flex bg-[#F3EFE9] p-1 rounded-lg border border-[#E3DDD2] text-xs font-sans">
-                <button onclick="setFilter('category', 'ALL')" id="cat-ALL" class="px-3 py-1 rounded-md bg-[#FFFFFF] text-[#201E1C] font-medium shadow-sm">全部赛道</button>
-                <button onclick="setFilter('category', 'GITHUB_TRENDING')" id="cat-GITHUB_TRENDING" class="px-3 py-1 rounded-md text-[#6E6860] hover:text-[#201E1C] flex items-center gap-1">⭐ GitHub 趋势</button>
-                <button onclick="setFilter('category', 'AI_DEV')" id="cat-AI_DEV" class="px-3 py-1 rounded-md text-[#6E6860] hover:text-[#201E1C]">AI / 开发</button>
-                <button onclick="setFilter('category', 'FINANCE')" id="cat-FINANCE" class="px-3 py-1 rounded-md text-[#6E6860] hover:text-[#201E1C]">金融 / 交易</button>
+                <button onclick="setFilter('category', 'ALL')" id="cat-ALL" class="px-2.5 py-1 rounded-md bg-[#FFFFFF] text-[#201E1C] font-medium shadow-sm">全部赛道</button>
+                <button onclick="setFilter('category', 'GITHUB_TRENDING')" id="cat-GITHUB_TRENDING" class="px-2.5 py-1 rounded-md text-[#6E6860] hover:text-[#201E1C] flex items-center gap-1">⭐ GitHub</button>
+                <button onclick="setFilter('category', 'AI_DEV')" id="cat-AI_DEV" class="px-2.5 py-1 rounded-md text-[#6E6860] hover:text-[#201E1C]">AI / 开发</button>
+                <button onclick="setFilter('category', 'FINANCE')" id="cat-FINANCE" class="px-2.5 py-1 rounded-md text-[#6E6860] hover:text-[#201E1C]">金融 / 交易</button>
             </div>
+
             <!-- 状态筛选 -->
-            <select id="statusSelect" onchange="setFilter('status', this.value)" class="bg-[#FFFFFF] border border-[#E0DBD2] text-xs text-[#3A3630] rounded-lg px-3 py-1.5 outline-none font-sans">
-                <option value="pending">待发布草稿 (Pending)</option>
-                <option value="published">已发布 (Published)</option>
-                <option value="archived">已归档跳过 (Archived)</option>
+            <select id="statusSelect" onchange="setFilter('status', this.value)" class="bg-[#FFFFFF] border border-[#E0DBD2] text-xs text-[#3A3630] rounded-lg px-2.5 py-1.5 outline-none font-sans font-medium">
+                <option value="all_active">📋 全部待办 (待二创 + 待发布)</option>
+                <option value="raw_unprocessed">⏳ 待手动二创 (Raw)</option>
+                <option value="pending">✍️ 待发布草稿 (Ready)</option>
+                <option value="published">✅ 已发布 (Published)</option>
+                <option value="archived">🗑️ 已归档跳过 (Archived)</option>
             </select>
-            <button onclick="openSourcesModal()" class="bg-[#F3EFE9] hover:bg-[#EAE4D9] text-[#3D3933] text-xs font-medium px-3.5 py-1.5 rounded-lg border border-[#E0DBD0] transition font-sans">⚙️ 监控源配置</button>
-            <a href="/rss.xml" target="_blank" title="打开公共 RSS 订阅源（用于同步个人博客、Newsletter 或阅读器）" class="bg-[#F3EFE9] hover:bg-[#EAE4D9] text-[#CC5A2B] text-xs font-medium px-3 py-1.5 rounded-lg border border-[#E0DBD0] transition font-sans flex items-center gap-1">
+
+            <div class="h-4 w-[1px] bg-[#E2DBD0] mx-0.5"></div>
+
+            <!-- 核心开关：自动二创 / 手动精选 -->
+            <button onclick="toggleSetting('auto_synthesize')" id="autoSynthBtn" title="点击切换：全自动二创 VS 仅抓取原始情报(省Token/手动精选)" class="px-2.5 py-1.5 rounded-lg border text-xs font-medium font-sans flex items-center gap-1.5 transition">
+                <span class="w-2 h-2 rounded-full bg-[#2E7D32]"></span>
+                <span id="autoSynthText">🤖 自动二创: 开</span>
+            </button>
+
+            <!-- 核心开关：后台定时巡航 / 暂停 -->
+            <button onclick="toggleSetting('auto_scan_enabled')" id="autoScanBtn" title="点击切换：开启后台30分钟定时巡航 VS 暂停巡航(仅手动触发)" class="px-2.5 py-1.5 rounded-lg border text-xs font-medium font-sans flex items-center gap-1.5 transition">
+                <span class="w-2 h-2 rounded-full bg-[#2E7D32]"></span>
+                <span id="autoScanText">⏱️ 巡航: 30m</span>
+            </button>
+
+            <!-- 监控源管理 -->
+            <button onclick="openSourcesModal()" class="bg-[#F3EFE9] hover:bg-[#EAE4D9] text-[#3D3933] text-xs font-medium px-2.5 py-1.5 rounded-lg border border-[#E0DBD0] transition font-sans">⚙️ 监控源</button>
+
+            <!-- RSS 分发源 -->
+            <a href="/rss.xml" target="_blank" title="打开标准 W3C RSS 2.0 订阅源（用于自动化同步至个人博客或 Newsletter）" class="bg-[#F3EFE9] hover:bg-[#EAE4D9] text-[#CC5A2B] text-xs font-medium px-2.5 py-1.5 rounded-lg border border-[#E0DBD0] transition font-sans flex items-center gap-1">
                 <span>📡 RSS</span>
             </a>
-            <button onclick="triggerScan()" id="scanBtn" class="bg-[#CC5A2B] hover:bg-[#B84E22] text-white text-xs font-medium px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-sm font-sans">
-                <span>⚡ 扫描全网 (Reddit+GitHub)</span>
+
+            <!-- 手动触发全网扫描 -->
+            <button onclick="triggerScan()" id="scanBtn" class="bg-[#CC5A2B] hover:bg-[#B84E22] text-white text-xs font-medium px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-sm font-sans">
+                <span>⚡ 扫描全网</span>
             </button>
-            <div class="h-4 w-[1px] bg-[#E2DBD0] mx-1"></div>
-            <button onclick="logout()" title="退出工作台" class="text-[#7A746B] hover:text-[#C53030] hover:bg-[#FFF5F5] text-xs px-2.5 py-1.5 rounded-lg border border-[#EAE4DA] transition flex items-center gap-1 font-sans">
-                <span>🚪 退出</span>
+
+            <div class="h-4 w-[1px] bg-[#E2DBD0] mx-0.5"></div>
+
+            <!-- 退出 -->
+            <button onclick="logout()" title="退出工作台" class="text-[#7A746B] hover:text-[#C53030] hover:bg-[#FFF5F5] text-xs px-2 py-1.5 rounded-lg border border-[#EAE4DA] transition flex items-center gap-1 font-sans">
+                <span>🚪</span>
             </button>
         </div>
     </header>
@@ -80,7 +106,7 @@
             <div class="p-8 text-center text-[#7A746B] text-sm">正在加载本地草稿库...</div>
         </aside>
 
-        <!-- 右侧：推文精修 + 视觉卡片工作室 -->
+        <!-- 右侧：推文精修 + 视觉卡片工作室 / 待二创线索工坊 -->
         <main class="flex-1 overflow-y-auto p-6 bg-[#FAF8F5]" id="editorPane">
             <div class="h-full flex flex-col items-center justify-center text-[#8C867D] text-sm">
                 👈 点击左侧任意情报卡片，进入二创精修与配图渲染
@@ -118,14 +144,69 @@ let drafts = [];
 let currentId = null;
 let selectedHookIdx = 0;
 let currentFormat = 'long'; // 'long' (深度长推) | 'short' (极简短推)
-let filters = { category: 'ALL', status: 'pending' };
-let appConfig = { x_handle: '@YourHandle', has_gemini_key: true };
+let filters = { category: 'ALL', status: 'all_active' };
+let appConfig = { 
+    x_handle: '@YourHandle', 
+    has_gemini_key: true,
+    settings: { auto_synthesize: '1', auto_scan_enabled: '1' }
+};
 
 function showToast(msg) {
     const t = document.getElementById('toast');
     t.innerText = msg;
     t.classList.remove('hidden');
     setTimeout(() => t.classList.add('hidden'), 2600);
+}
+
+function renderHeaderSettings() {
+    const s = appConfig.settings || {};
+    const autoSynth = s.auto_synthesize !== '0';
+    const autoScan = s.auto_scan_enabled !== '0';
+
+    const synthBtn = document.getElementById('autoSynthBtn');
+    const synthText = document.getElementById('autoSynthText');
+    if (synthBtn && synthText) {
+        if (autoSynth) {
+            synthBtn.className = "px-2.5 py-1.5 rounded-lg border text-xs font-medium font-sans flex items-center gap-1.5 transition bg-[#EDF6EE] text-[#1B4D2E] border-[#C4DECA]";
+            synthBtn.innerHTML = '<span class="w-2 h-2 rounded-full bg-[#2E7D32]"></span><span>🤖 自动二创: 开</span>';
+        } else {
+            synthBtn.className = "px-2.5 py-1.5 rounded-lg border text-xs font-medium font-sans flex items-center gap-1.5 transition bg-[#FFFBEB] text-[#B45309] border-[#FDE68A]";
+            synthBtn.innerHTML = '<span class="w-2 h-2 rounded-full bg-[#D97706]"></span><span>🤖 自动二创: 关(省Token)</span>';
+        }
+    }
+
+    const scanBtn = document.getElementById('autoScanBtn');
+    const scanText = document.getElementById('autoScanText');
+    if (scanBtn && scanText) {
+        if (autoScan) {
+            scanBtn.className = "px-2.5 py-1.5 rounded-lg border text-xs font-medium font-sans flex items-center gap-1.5 transition bg-[#EDF6EE] text-[#1B4D2E] border-[#C4DECA]";
+            scanBtn.innerHTML = '<span class="w-2 h-2 rounded-full bg-[#2E7D32]"></span><span>⏱️ 巡航: 30m</span>';
+        } else {
+            scanBtn.className = "px-2.5 py-1.5 rounded-lg border text-xs font-medium font-sans flex items-center gap-1.5 transition bg-[#F3EFE9] text-[#7A746B] border-[#E0DBD0]";
+            scanBtn.innerHTML = '<span class="w-2 h-2 rounded-full bg-[#A8A29E]"></span><span>⏱️ 巡航: 暂停</span>';
+        }
+    }
+}
+
+async function toggleSetting(key) {
+    const currentVal = (appConfig.settings && appConfig.settings[key]) || "1";
+    const newVal = currentVal === "1" ? "0" : "1";
+    try {
+        const res = await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key, value: newVal })
+        });
+        const data = await res.json();
+        if (data.ok) {
+            appConfig.settings = data.settings;
+            renderHeaderSettings();
+            const label = key === 'auto_synthesize' ? '自动 AI 二创' : '后台定时巡航';
+            showToast(`⚙️ ${label} -> ${newVal === '1' ? '已开启' : '已暂停'}`);
+        }
+    } catch (e) {
+        showToast("❌ 更新设置失败");
+    }
 }
 
 async function loadConfig() {
@@ -137,6 +218,7 @@ async function loadConfig() {
         }
         if (res.ok) {
             appConfig = await res.json();
+            renderHeaderSettings();
             if (!appConfig.has_gemini_key) {
                 document.getElementById('keyAlert').classList.remove('hidden');
                 document.getElementById('keyAlert').classList.add('flex');
@@ -163,8 +245,8 @@ function setFilter(key, val) {
             const btn = document.getElementById('cat-' + c);
             if (btn) {
                 btn.className = c === val
-                    ? "px-3 py-1 rounded-md bg-[#FFFFFF] text-[#201E1C] font-medium shadow-sm"
-                    : "px-3 py-1 rounded-md text-[#6E6860] hover:text-[#201E1C]";
+                    ? "px-2.5 py-1 rounded-md bg-[#FFFFFF] text-[#201E1C] font-medium shadow-sm"
+                    : "px-2.5 py-1 rounded-md text-[#6E6860] hover:text-[#201E1C]";
             }
         });
     }
@@ -183,7 +265,7 @@ async function loadDrafts() {
         const stillExists = drafts.find(d => d.post_id === currentId);
         selectDraft(stillExists ? currentId : drafts[0].post_id);
     } else {
-        document.getElementById('editorPane').innerHTML = `<div class="h-full flex items-center justify-center text-[#8C867D] text-sm">当前筛选条件下暂无草稿，可点击右上角「⚡ 扫描全网情报」</div>`;
+        document.getElementById('editorPane').innerHTML = `<div class="h-full flex items-center justify-center text-[#8C867D] text-sm">当前筛选条件下暂无草稿，可点击右上角「⚡ 扫描全网」抓取最新情报</div>`;
     }
 }
 
@@ -196,6 +278,7 @@ function renderFeedList() {
     container.innerHTML = drafts.map(d => {
         const isSelected = d.post_id === currentId;
         const isGithub = d.category === 'GITHUB_TRENDING';
+        const isRaw = d.status === 'raw_unprocessed';
         
         let badgeColor = 'bg-[#FEF3E2] text-[#B45309] border-[#FDE68A]';
         if (isGithub) {
@@ -206,7 +289,9 @@ function renderFeedList() {
 
         const tier = d.content_tier || 'DEEP_DIVE_MEMO';
         let tierBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-[#EEF2FF] text-[#4338CA] border border-[#E0E7FF]">📜 深度长文</span>`;
-        if (tier === 'FLASH_PUNCH') {
+        if (isRaw) {
+            tierBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-[#FFFBEB] text-[#B45309] border border-[#FDE68A]">⏳ 待手动二创</span>`;
+        } else if (tier === 'FLASH_PUNCH') {
             tierBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-[#FFF7ED] text-[#C2410C] border border-[#FFEDD5]">⚡ 极简短推</span>`;
         } else if (tier === 'DEBATE_ROUNDTABLE') {
             tierBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-[#FEF2F2] text-[#B91C1C] border border-[#FEE2E2]">🥊 争议圆桌</span>`;
@@ -214,7 +299,7 @@ function renderFeedList() {
 
         const metricsSnippet = isGithub
             ? `<div class="flex items-center gap-1.5 text-[#553C9A] font-mono text-xs">
-                   <span>⭐ +${d.score} stars today</span>
+                   <span>⭐ +${d.score} stars</span>
                </div>`
             : `<div class="flex items-center gap-2 text-[#7A746B] font-mono text-xs">
                    <span title="增长斜率">⚡ ${d.velocity}/m</span>
@@ -223,9 +308,9 @@ function renderFeedList() {
 
         const footerSnippet = isGithub
             ? `<div class="flex items-center gap-1.5"><span>🐙 开源拆解</span>${tierBadge}</div>
-               <span class="text-[#553C9A] font-mono text-[10px]">${d.narrative_framework || 'Repo Teardown'}</span>`
+               <span class="text-[#553C9A] font-mono text-[10px]">${isRaw ? '原始线索' : (d.narrative_framework || 'Repo Teardown')}</span>`
             : `<div class="flex items-center gap-1.5"><span>▲ ${d.score} · 💬 ${d.num_comments}</span>${tierBadge}</div>
-               <span class="text-[#CC5A2B] font-mono text-[10px]">${d.narrative_framework || ''}</span>`;
+               <span class="text-[#CC5A2B] font-mono text-[10px]">${isRaw ? '原始线索' : (d.narrative_framework || '')}</span>`;
 
         return `
         <div onclick="selectDraft('${d.post_id}')" class="p-4 cursor-pointer transition hover:bg-[#FFFFFF]/70 ${isSelected ? 'bg-[#FFFFFF] border-l-4 border-l-[#CC5A2B] shadow-sm' : ''}">
@@ -254,12 +339,109 @@ function selectDraft(postId) {
     renderEditor();
 }
 
+async function synthesizeDraft(postId) {
+    const btn = document.getElementById('synthBtn');
+    const reBtn = document.getElementById('reSynthBtn');
+    const targetBtn = btn || reBtn;
+
+    if (targetBtn) {
+        targetBtn.disabled = true;
+        targetBtn.innerHTML = '<span class="animate-spin">⏳</span><span>Gemini 深度加工中 (长短文 + 数据卡片)...</span>';
+    }
+    showToast("🤖 AI 正在对本条情报进行全维度深度二创...");
+
+    try {
+        const res = await fetch(`/api/drafts/${postId}/synthesize`, { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) {
+            alert("⚠️ " + (data.detail || "二创失败"));
+            if (targetBtn) {
+                targetBtn.disabled = false;
+                targetBtn.innerHTML = '<span>🤖 立即调用 AI 深度二创</span>';
+            }
+            return;
+        }
+        showToast("✨ 二创加工成功！文案与数据卡片已生成");
+        await loadDrafts();
+        selectDraft(postId);
+    } catch (e) {
+        alert("网络异常，二创请求失败: " + e);
+        if (targetBtn) {
+            targetBtn.disabled = false;
+            targetBtn.innerHTML = '<span>🤖 立即调用 AI 深度二创</span>';
+        }
+    }
+}
+
 function renderEditor() {
     const item = drafts.find(d => d.post_id === currentId);
     if (!item) return;
-    const hooks = item.hooks || [""];
-    const metrics = item.card.metrics || [];
     const isGithub = item.category === 'GITHUB_TRENDING';
+    const isRaw = item.status === 'raw_unprocessed';
+    const sourceLabel = isGithub ? 'GitHub ↗' : 'Reddit ↗';
+    const sourceClass = isGithub ? 'text-[#553C9A]' : 'text-[#CC5A2B]';
+
+    const metricsSnippet = isGithub
+        ? `⭐ +${item.score} stars today`
+        : `⚡ 斜率: ${item.velocity}/m · 争议比: ${item.controversy} · 赞: ${item.score} · 评: ${item.num_comments}`;
+
+    // 分支 1：处于未二创的原始情报状态 (待手动二创模式)
+    if (isRaw) {
+        document.getElementById('editorPane').innerHTML = `
+            <div class="max-w-4xl mx-auto space-y-6">
+                <!-- 顶部线索信息与操作栏 -->
+                <div class="flex items-center justify-between bg-[#FFFFFF] border border-[#E8E2D8] p-5 rounded-xl shadow-sm">
+                    <div class="space-y-1.5 pr-4">
+                        <div class="flex items-center gap-2 text-xs font-sans">
+                            <span class="px-2 py-0.5 rounded font-mono text-[11px] bg-[#FFFBEB] text-[#B45309] border border-[#FDE68A] font-semibold">⏳ 原始线索 (待二创)</span>
+                            <span class="text-[#7A746B]">· 来源:</span>
+                            <a href="${item.permalink}" target="_blank" class="${sourceClass} hover:underline font-mono font-medium">${sourceLabel}</a>
+                            <span class="text-[#8C867D]">· 捕获时间: ${item.created_at || '刚刚'}</span>
+                        </div>
+                        <h2 class="text-base font-bold text-[#201E1C] select-text font-sans">${item.title}</h2>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <button onclick="markStatus('${item.post_id}', 'archived')" class="px-3 py-2 rounded-lg border border-[#DDD6C8] hover:bg-[#F3EFE9] text-xs text-[#524E48] transition font-sans">🗑️ 归档忽略</button>
+                        <button id="synthBtn" onclick="synthesizeDraft('${item.post_id}')" class="bg-[#CC5A2B] hover:bg-[#B84E22] text-white text-xs font-semibold px-4 py-2 rounded-lg transition shadow-sm font-sans flex items-center gap-1.5">
+                            <span>🤖 立即调用 AI 深度二创</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 原始情报详情预览 -->
+                <div class="bg-[#FFFFFF] border border-[#E8E2D8] rounded-xl p-6 shadow-sm space-y-4">
+                    <div class="flex items-center justify-between border-b border-[#EFEAE2] pb-3">
+                        <h3 class="text-xs font-mono uppercase text-[#7A746B] font-semibold tracking-wider">📄 原始情报快照 & 讨论线索</h3>
+                        <div class="text-xs font-mono text-[#8C867D]">${metricsSnippet}</div>
+                    </div>
+
+                    <div class="bg-[#FAF8F5] border border-[#EAE4DA] rounded-lg p-4 text-xs text-[#3D3933] leading-relaxed whitespace-pre-wrap select-text max-h-72 overflow-y-auto font-mono">
+${item.selftext || item.title || '（该项目为开源代码库或短贴，点击右上角来源链接可查看原始完整仓库）'}
+                    </div>
+
+                    <!-- 引导二创卡片 -->
+                    <div class="bg-[#FFF8F5] border border-[#FCD9CC] rounded-xl p-5 flex flex-col md:flex-row items-center justify-between gap-4">
+                        <div class="space-y-1">
+                            <div class="font-semibold text-sm text-[#201E1C] flex items-center gap-1.5 font-sans">
+                                <span class="text-[#CC5A2B]">💡</span> 一键启动 AI 双飞轮深度二创
+                            </div>
+                            <div class="text-xs text-[#6E6860] leading-normal font-sans">
+                                调度 <b>Gemini 3.1 Pro</b> 自动提炼黄金 Hook 前两行、300字深度长推（含反共识论点与商业经济学推演）、极简短推、大V截流狙击评论、以及 16:9 雅致数据卡片。
+                            </div>
+                        </div>
+                        <button onclick="synthesizeDraft('${item.post_id}')" class="bg-[#CC5A2B] hover:bg-[#B84E22] text-white text-xs font-semibold px-5 py-2.5 rounded-lg transition shadow-sm shrink-0 font-sans flex items-center gap-1.5">
+                            <span>⚡ 立即二创此情报</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    // 分支 2：已完成二创的草稿工作台
+    const hooks = item.hooks || [""];
+    const metrics = (item.card && item.card.metrics) || [];
 
     const hooksHtml = hooks.map((h, idx) => `
         <div onclick="switchHook(${idx})" class="p-3 rounded-lg border cursor-pointer transition text-sm select-text ${idx === selectedHookIdx ? 'border-[#CC5A2B] bg-[#FFF8F5] text-[#201E1C] ring-1 ring-[#CC5A2B]/20 shadow-sm' : 'border-[#E5DFD4] bg-[#FFFFFF] text-[#4A453E] hover:border-[#CC5A2B]/40 hover:bg-[#FAF8F5]'}">
@@ -281,9 +463,6 @@ function renderEditor() {
         </div>`;
     }).join('');
 
-    const sourceLabel = isGithub ? 'GitHub ↗' : 'Reddit ↗';
-    const sourceClass = isGithub ? 'text-[#553C9A]' : 'text-[#CC5A2B]';
-
     // 格式与等级信息
     const tier = item.content_tier || 'DEEP_DIVE_MEMO';
     let tierText = '📜 建议深度长推（高书签权重）';
@@ -303,11 +482,14 @@ function renderEditor() {
                     <div class="text-xs text-[#7A746B] flex items-center gap-2 font-sans">
                         <span>叙事框架: <b class="${sourceClass} font-mono">${item.narrative_framework || 'Alpha Synthesis'}</b></span>
                         <span>· 原始来源:</span>
-                        <a href="${item.permalink}" target="_blank" class="${sourceClass} hover:underline font-mono">${sourceLabel}</a>
+                        <a href="${item.permalink}" target="_blank" class="${sourceClass} hover:underline font-mono font-medium">${sourceLabel}</a>
                     </div>
                     <div class="text-sm font-semibold text-[#201E1C] select-text font-sans">${item.title}</div>
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
+                    <button id="reSynthBtn" onclick="synthesizeDraft('${item.post_id}')" title="使用最新模型与提示词重新生成长短推文与数据卡片" class="px-3 py-1.5 rounded-lg border border-[#DDD6C8] hover:bg-[#F3EFE9] text-xs text-[#524E48] transition font-sans flex items-center gap-1">
+                        <span>🔄 重新二创</span>
+                    </button>
                     <button onclick="markStatus('${item.post_id}', 'archived')" class="px-3 py-1.5 rounded-lg border border-[#DDD6C8] hover:bg-[#F3EFE9] text-xs text-[#524E48] transition font-sans">🗑️ 归档跳过</button>
                     <button onclick="markStatus('${item.post_id}', 'published')" class="px-3 py-1.5 rounded-lg bg-[#386641] hover:bg-[#2F5236] text-xs font-medium text-white transition shadow-sm font-sans">✅ 标记已发布</button>
                 </div>
@@ -378,13 +560,13 @@ function renderEditor() {
                                 <span class="w-2.5 h-2.5 rounded-full bg-[#E06A55]"></span>
                                 <span class="w-2.5 h-2.5 rounded-full bg-[#E5A93C]"></span>
                                 <span class="w-2.5 h-2.5 rounded-full bg-[#5A9E6F]"></span>
-                                <span class="text-[11px] font-mono text-[#7A746B] ml-2 uppercase tracking-widest font-semibold">${item.category} // ${item.card.type || 'ALPHA'}</span>
+                                <span class="text-[11px] font-mono text-[#7A746B] ml-2 uppercase tracking-widest font-semibold">${item.category} // ${(item.card && item.card.type) || 'ALPHA'}</span>
                             </div>
                             <span class="text-[11px] font-mono ${isGithub ? 'text-[#553C9A] bg-[#F3EFFB] border-[#DDD3F5]' : 'text-[#CC5A2B] bg-[#FFF2ED] border-[#FCD9CC]'} border px-2 py-0.5 rounded font-semibold">${isGithub ? 'GITHUB ALPHA' : 'RESEARCH MEMO'}</span>
                         </div>
 
                         <div class="my-2">
-                            <h2 contenteditable="true" class="text-base font-bold text-[#1C1A17] tracking-tight leading-snug outline-none font-sans">${item.card.title || item.title}</h2>
+                            <h2 contenteditable="true" class="text-base font-bold text-[#1C1A17] tracking-tight leading-snug outline-none font-sans">${(item.card && item.card.title) || item.title}</h2>
                         </div>
 
                         <div class="grid grid-cols-2 gap-2 my-auto">
@@ -535,14 +717,15 @@ let scanPollInterval = null;
 
 async function triggerScan() {
     const btn = document.getElementById('scanBtn');
+    const autoSynth = (appConfig.settings && appConfig.settings.auto_synthesize) !== '0';
 
-    // 1. 优先校验是否已配置有效 Gemini API Key
-    if (!appConfig.has_gemini_key) {
-        alert("⚠️ 未检测到有效的 Google Gemini API Key！\n\nAI 二创流水线需要调用 Gemini 才能提炼 README、拆解架构并产出长短推文。\n\n请按以下步骤配置：\n1. 打开项目根目录下的 .env 文件\n2. 将 GEMINI_API_KEY=your_gemini_api_key_here 替换为你的真实 Key\n3. 重启服务后即可正常扫描！\n\n免费申请 Key: https://aistudio.google.com/");
+    // 仅在开启了自动二创时才强制要求 Gemini API Key
+    if (autoSynth && !appConfig.has_gemini_key) {
+        alert("⚠️ 当前开启了「自动 AI 二创」，但未检测到有效的 Google Gemini API Key！\n\n请按以下步骤配置：\n1. 打开项目根目录下的 .env 文件\n2. 将 GEMINI_API_KEY=your_gemini_api_key_here 替换为你的真实 Key\n3. 重启服务后即可正常扫描！\n\n或者：点击顶部的「🤖 自动二创: 开」将其切换为「关(省Token)」，即可在无 Key 的情况下直接抓取全网原始情报！\n\n免费申请 Key: https://aistudio.google.com/");
         return;
     }
 
-    btn.innerHTML = '<span class="animate-spin">⏳</span><span>启动扫描流水线...</span>';
+    btn.innerHTML = '<span class="animate-spin">⏳</span><span>启动扫描...</span>';
     btn.disabled = true;
 
     try {
@@ -551,15 +734,15 @@ async function triggerScan() {
 
         if (!res.ok) {
             alert("⚠️ " + (data.detail || "扫描启动失败"));
-            btn.innerHTML = '<span>⚡ 扫描全网 (Reddit+GitHub)</span>';
+            btn.innerHTML = '<span>⚡ 扫描全网</span>';
             btn.disabled = false;
             return;
         }
 
         showToast("🛰️ " + (data.message || "全网扫描已启动"));
-        btn.innerHTML = '<span class="animate-spin">⏳</span><span>正在抓取全网热点...</span>';
+        btn.innerHTML = '<span class="animate-spin">⏳</span><span>抓取全网热点...</span>';
 
-        // 启动轮询动态追踪后台进度（实时反馈当前步骤，彻底消除无响应假死感）
+        // 启动轮询动态追踪后台进度（实时反馈当前步骤）
         if (scanPollInterval) clearInterval(scanPollInterval);
         scanPollInterval = setInterval(async () => {
             try {
@@ -567,12 +750,12 @@ async function triggerScan() {
                 if (sRes.ok) {
                     const statusData = await sRes.json();
                     if (statusData.message) {
-                        const displayMsg = statusData.message.length > 22 ? statusData.message.slice(0, 22) + '...' : statusData.message;
+                        const displayMsg = statusData.message.length > 20 ? statusData.message.slice(0, 20) + '...' : statusData.message;
                         btn.innerHTML = `<span class="animate-spin">⏳</span><span>${displayMsg}</span>`;
                     }
                     if (!statusData.running) {
                         clearInterval(scanPollInterval);
-                        btn.innerHTML = '<span>⚡ 扫描全网 (Reddit+GitHub)</span>';
+                        btn.innerHTML = '<span>⚡ 扫描全网</span>';
                         btn.disabled = false;
                         showToast("✅ " + (statusData.message || "全网扫描完成！"));
                         loadDrafts();
@@ -585,7 +768,7 @@ async function triggerScan() {
 
     } catch (e) {
         showToast("❌ 网络连接异常");
-        btn.innerHTML = '<span>⚡ 扫描全网 (Reddit+GitHub)</span>';
+        btn.innerHTML = '<span>⚡ 扫描全网</span>';
         btn.disabled = false;
     }
 }

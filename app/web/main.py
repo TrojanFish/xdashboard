@@ -6,13 +6,17 @@ import sys
 import time
 import xml.sax.saxutils as saxutils
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, Dict
 from fastapi import FastAPI, HTTPException, Depends, status, BackgroundTasks, Request, Response, Cookie
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel
 from app.config import settings
-from app.database import get_conn, init_db
+from app.database import (
+    get_conn, init_db, get_setting, set_setting, get_all_settings,
+    get_raw_signal, save_signal_and_draft
+)
 from app.scheduler import start_background_scheduler, execute_radar_cycle, get_scan_state
+from app.engine.synthesizer import SynthesisEngine
 
 init_db()
 
@@ -197,7 +201,7 @@ def get_rss_feed(request: Request):
 
 @app.get("/api/config")
 def get_config(username: str = Depends(verify_credentials)):
-    """返回前端渲染所需的基础配置（避免硬编码）"""
+    """返回前端渲染所需的基础配置与系统开关"""
     return {
         "x_handle": settings.X_HANDLE,
         "has_gemini_key": bool(settings.GEMINI_API_KEY and settings.GEMINI_API_KEY != "your_gemini_api_key_here"),
@@ -205,11 +209,30 @@ def get_config(username: str = Depends(verify_credentials)):
         "triage_model": settings.TRIAGE_MODEL,
         "synthesis_model": settings.SYNTHESIS_MODEL,
         "username": username,
+        "settings": get_all_settings(),
     }
 
 
+@app.get("/api/settings")
+def fetch_settings(username: str = Depends(verify_credentials)):
+    """获取所有系统开关设置"""
+    return {"ok": True, "settings": get_all_settings()}
+
+
+class SettingUpdate(BaseModel):
+    key: str
+    value: str
+
+
+@app.post("/api/settings")
+def update_setting(payload: SettingUpdate, username: str = Depends(verify_credentials)):
+    """更新单个系统开关设置"""
+    set_setting(payload.key, payload.value)
+    return {"ok": True, "settings": get_all_settings()}
+
+
 @app.get("/api/drafts")
-def get_drafts(category: str = "ALL", status: str = "pending", username: str = Depends(verify_credentials)):
+def get_drafts(category: str = "ALL", status: str = "all_active", username: str = Depends(verify_credentials)):
     conn = get_conn()
     query = """
         SELECT d.*, r.subreddit, r.title, r.permalink, r.score, r.num_comments, r.velocity, r.controversy, r.category
@@ -221,7 +244,9 @@ def get_drafts(category: str = "ALL", status: str = "pending", username: str = D
     if category != "ALL":
         query += " AND r.category = ?"
         params.append(category)
-    if status != "ALL":
+    if status == "all_active":
+        query += " AND d.status IN ('raw_unprocessed', 'pending')"
+    elif status != "ALL":
         query += " AND d.status = ?"
         params.append(status)
 
@@ -275,20 +300,43 @@ def save_draft(post_id: str, payload: DraftEdit, username: str = Depends(verify_
     return {"ok": True}
 
 
-@app.post("/api/scan")
-def trigger_scan(background_tasks: BackgroundTasks, username: str = Depends(verify_credentials)):
-    """使用 FastAPI 原生 BackgroundTasks 异步执行，带密钥检测与防重复并发保护"""
+@app.post("/api/drafts/{post_id}/synthesize")
+def synthesize_post(post_id: str, username: str = Depends(verify_credentials)):
+    """针对单条情报执行/重新执行 AI 深度二创（支持待二创情报与历史草稿一键重塑）"""
     if not settings.GEMINI_API_KEY or settings.GEMINI_API_KEY == "your_gemini_api_key_here":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="未检测到有效的 GEMINI_API_KEY！请先在 .env 文件中填入你的 Google Gemini API Key（免费申请: https://aistudio.google.com/）并重启服务。"
+            detail="未检测到有效的 GEMINI_API_KEY！请先在 .env 文件中填入 Google Gemini API Key 后再调用 AI 二创。"
+        )
+    raw_sig = get_raw_signal(post_id)
+    if not raw_sig:
+        raise HTTPException(status_code=404, detail="未找到对应的原始情报数据")
+
+    engine = SynthesisEngine()
+    try:
+        draft_data = engine.synthesize(raw_sig)
+        save_signal_and_draft(raw_sig, draft_data)
+        return {"ok": True, "message": "AI 二创加工成功！", "draft": draft_data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AI 二创加工失败: {e}")
+
+
+@app.post("/api/scan")
+def trigger_scan(background_tasks: BackgroundTasks, username: str = Depends(verify_credentials)):
+    """使用 FastAPI 原生 BackgroundTasks 异步执行，带密钥检测与防重复并发保护"""
+    auto_synthesize = (get_setting("auto_synthesize", "1") == "1")
+    if auto_synthesize and (not settings.GEMINI_API_KEY or settings.GEMINI_API_KEY == "your_gemini_api_key_here"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="当前处于「自动 AI 二创」模式，但未检测到有效的 GEMINI_API_KEY！请在 .env 中填入 Google Gemini API Key，或切换为「仅抓取原始情报 (省 Token)」模式。"
         )
     state = get_scan_state()
     if state.get("running"):
         return {"ok": True, "message": "全网扫描流水线正在进行中，请观察进度...", "state": state}
 
     background_tasks.add_task(execute_radar_cycle)
-    return {"ok": True, "message": "全网扫描与 AI 二创流水线已启动！", "state": state}
+    mode_tag = "全自动扫描+二创" if auto_synthesize else "原始线索抓取(手动模式)"
+    return {"ok": True, "message": f"雷达扫描已启动 [{mode_tag}]！", "state": state}
 
 
 @app.get("/api/scan/status")

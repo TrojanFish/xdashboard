@@ -1,7 +1,7 @@
 import json
 import os
 import sqlite3
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from app.config import settings
 
 
@@ -87,6 +87,19 @@ def init_db():
         )
     """)
 
+    # 5. 系统开关与全局偏好设置表
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS system_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        )
+    """)
+    default_settings = [
+        ("auto_synthesize", "1"),    # 1: 抓取后自动二创 (全自动); 0: 仅抓取原始情报，待用户手动挑选二创 (省 Token)
+        ("auto_scan_enabled", "1"),  # 1: 开启后台定时巡航; 0: 暂停后台自动巡航 (仅允许手动点击扫描)
+    ]
+    c.executemany("INSERT OR IGNORE INTO system_settings (key, value) VALUES (?, ?)", default_settings)
+
     # 动态平滑迁移：为已有数据库追加 content_tier 与 short_post 字段（零数据丢失）
     c.execute("PRAGMA table_info(drafts)")
     draft_cols = [col[1] for col in c.fetchall()]
@@ -138,6 +151,65 @@ def init_db():
     conn.close()
 
 
+def get_setting(key: str, default: str = "") -> str:
+    conn = get_conn()
+    row = conn.execute("SELECT value FROM system_settings WHERE key = ?", (key,)).fetchone()
+    conn.close()
+    return row["value"] if row else default
+
+
+def set_setting(key: str, value: str):
+    conn = get_conn()
+    conn.execute("INSERT OR REPLACE INTO system_settings (key, value) VALUES (?, ?)", (key, str(value)))
+    conn.commit()
+    conn.close()
+
+
+def get_all_settings() -> Dict[str, str]:
+    conn = get_conn()
+    rows = conn.execute("SELECT key, value FROM system_settings").fetchall()
+    conn.close()
+    return {r["key"]: r["value"] for r in rows}
+
+
+def save_raw_signal_only(signal: Dict[str, Any]):
+    """仅存入原始情报池，不调用 AI 二创（省 Token / 手动精选模式）"""
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("""
+        INSERT OR REPLACE INTO raw_signals
+        (post_id, subreddit, category, title, selftext, permalink, flair, score, num_comments, velocity, controversy, top_comments_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        signal["post_id"], signal["subreddit"], signal["category"], signal["title"],
+        signal["selftext"], signal["permalink"], signal["flair"], signal["score"],
+        signal["num_comments"], signal["velocity"], signal["controversy"],
+        json.dumps(signal.get("top_comments", []), ensure_ascii=False)
+    ))
+    # 创建待二创占位记录
+    c.execute("""
+        INSERT OR IGNORE INTO drafts
+        (post_id, persona_id, status, worth_posting, skip_reason, narrative_framework, content_tier, hooks_json, short_post, long_post, sniper_reply, x_search_query, card_json)
+        VALUES (?, 1, 'raw_unprocessed', 1, '', 'Pending AI Synthesis', 'DEEP_DIVE_MEMO', '[]', '', '', '', '', '{}')
+    """, (signal["post_id"],))
+    conn.commit()
+    conn.close()
+
+
+def get_raw_signal(post_id: str) -> Optional[Dict[str, Any]]:
+    conn = get_conn()
+    row = conn.execute("SELECT * FROM raw_signals WHERE post_id = ?", (post_id,)).fetchone()
+    conn.close()
+    if not row:
+        return None
+    d = dict(row)
+    try:
+        d["top_comments"] = json.loads(d["top_comments_json"]) if d["top_comments_json"] else []
+    except Exception:
+        d["top_comments"] = []
+    return d
+
+
 def is_signal_processed(post_id: str) -> bool:
     conn = get_conn()
     try:
@@ -161,7 +233,7 @@ def save_signal_and_draft(signal: Dict[str, Any], draft_data: Dict[str, Any], pe
         signal["post_id"], signal["subreddit"], signal["category"], signal["title"],
         signal["selftext"], signal["permalink"], signal["flair"], signal["score"],
         signal["num_comments"], signal["velocity"], signal["controversy"],
-        json.dumps(signal["top_comments"], ensure_ascii=False)
+        json.dumps(signal.get("top_comments", []), ensure_ascii=False)
     ))
 
     c.execute("""
@@ -171,8 +243,8 @@ def save_signal_and_draft(signal: Dict[str, Any], draft_data: Dict[str, Any], pe
     """, (
         signal["post_id"],
         persona_id,
-        "pending" if draft_data["is_worth_posting"] else "archived",
-        1 if draft_data["is_worth_posting"] else 0,
+        "pending" if draft_data.get("is_worth_posting", True) else "archived",
+        1 if draft_data.get("is_worth_posting", True) else 0,
         draft_data.get("skip_reason", ""),
         draft_data.get("narrative_framework", "Deep Dive"),
         draft_data.get("content_tier", "DEEP_DIVE_MEMO"),
