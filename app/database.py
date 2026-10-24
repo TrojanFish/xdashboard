@@ -6,8 +6,13 @@ from app.config import settings
 
 
 def get_conn() -> sqlite3.Connection:
-    os.makedirs(os.path.dirname(settings.DB_PATH), exist_ok=True)
-    conn = sqlite3.connect(settings.DB_PATH, check_same_thread=False)
+    dirname = os.path.dirname(settings.DB_PATH)
+    if dirname:
+        os.makedirs(dirname, exist_ok=True)
+    conn = sqlite3.connect(settings.DB_PATH, check_same_thread=False, timeout=20.0)
+    # 开启 WAL 模式与繁忙重试，保证多线程与 Web 并发读写零死锁
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute("PRAGMA busy_timeout = 10000;")
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -95,9 +100,9 @@ def init_db():
         ("ValueInvesting", "FINANCE", 25, 0.3, 0.35),
         ("options", "FINANCE", 25, 0.35, 0.40),
         # 3. 头部纯正加密资本与链上金融（严选高信噪比，坚决剔除土狗与Meme水贴）
-        ("BitcoinMarkets", "FINANCE", 40, 0.45, 0.35),  # BTC 宏观衍生品、机构资金流与主力持仓分析
-        ("ethfinance", "FINANCE", 30, 0.35, 0.35),      # ETH 宏观基本面、L2 资本效率与严谨技术分析 (无垃圾贴)
-        ("defi", "FINANCE", 25, 0.30, 0.35),            # 链上流动性架构、真实收益协议与借贷资本清算机制
+        ("BitcoinMarkets", "FINANCE", 40, 0.45, 0.35),
+        ("ethfinance", "FINANCE", 30, 0.35, 0.35),
+        ("defi", "FINANCE", 25, 0.30, 0.35),
     ]
     c.executemany(
         "INSERT OR IGNORE INTO watch_sources (subreddit, category, min_score, min_velocity, min_controversy) VALUES (?, ?, ?, ?, ?)",
@@ -133,7 +138,6 @@ def is_signal_processed(post_id: str) -> bool:
         conn.close()
         init_db()
         return False
-
 
 
 def save_signal_and_draft(signal: Dict[str, Any], draft_data: Dict[str, Any], persona_id: int = 1):

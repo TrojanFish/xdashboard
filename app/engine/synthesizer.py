@@ -1,9 +1,24 @@
-from typing import Dict, Any
+from typing import Dict, Any, List
 from google import genai
 from google.genai import types
 from app.config import settings
 from app.database import get_conn
 from app.engine.schemas import TriageResult, SynthesizedDraft
+
+FALLBACK_TRIAGE_MODELS = [
+    settings.TRIAGE_MODEL,
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
+]
+
+FALLBACK_SYNTHESIS_MODELS = [
+    settings.SYNTHESIS_MODEL,
+    "gemini-2.5-pro",
+    "gemini-2.0-flash",
+    "gemini-1.5-pro",
+    "gemini-1.5-flash",
+]
 
 
 class SynthesisEngine:
@@ -15,6 +30,30 @@ class SynthesisEngine:
         row = conn.execute("SELECT * FROM personas WHERE is_default = 1 LIMIT 1").fetchone()
         conn.close()
         return dict(row)
+
+    def _generate_with_fallback(self, contents: str, schema_class, candidate_models: List[str], temperature: float = 0.5):
+        """模型自动容错回退机制，确保 API Key 无论处于哪种权限均能平滑调用"""
+        last_err = None
+        seen_models = set()
+        for model_name in candidate_models:
+            if not model_name or model_name in seen_models:
+                continue
+            seen_models.add(model_name)
+            try:
+                resp = self.client.models.generate_content(
+                    model=model_name,
+                    contents=contents,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        response_schema=schema_class,
+                        temperature=temperature,
+                    ),
+                )
+                return resp
+            except Exception as e:
+                last_err = e
+                print(f"      [AI 降级重试] 模型 {model_name} 暂不可用 ({e})，尝试备选模型...")
+        raise last_err
 
     def quick_triage(self, signal: Dict[str, Any]) -> TriageResult:
         """二级漏斗：用极低成本的 Flash 模型拦截纯求助帖、情绪宣泄水贴或低价值项目"""
@@ -37,17 +76,12 @@ Subreddit: r/{signal['subreddit']} ({signal['category']})
 Title: {signal['title']}
 Content snippet: {signal['selftext'][:600]}
 """
-
-        resp = self.client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                response_schema=TriageResult,
-                temperature=0.2,
-            ),
-        )
-        return TriageResult.model_validate_json(resp.text)
+        try:
+            resp = self._generate_with_fallback(prompt, TriageResult, FALLBACK_TRIAGE_MODELS, temperature=0.2)
+            return TriageResult.model_validate_json(resp.text)
+        except Exception as e:
+            print(f"      [初筛失败] 所有初筛模型异常: {e}，默认放行交由深度合成。")
+            return TriageResult(pass_triage=True, reason="初筛异常默认放行")
 
     def synthesize(self, signal: Dict[str, Any]) -> Dict[str, Any]:
         # 先过 Flash 初筛漏斗
@@ -121,14 +155,6 @@ Content snippet: {signal['selftext'][:600]}
 4. **BANNED AI SLOP WORDS**: Strictly forbidden: {persona['banned_words']}.
 """
 
-        resp = self.client.models.generate_content(
-            model="gemini-2.5-pro",
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                response_schema=SynthesizedDraft,
-                temperature=0.7,
-            ),
-        )
+        resp = self._generate_with_fallback(prompt, SynthesizedDraft, FALLBACK_SYNTHESIS_MODELS, temperature=0.7)
         draft_obj = SynthesizedDraft.model_validate_json(resp.text)
         return draft_obj.model_dump()

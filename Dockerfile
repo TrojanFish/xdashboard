@@ -8,7 +8,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 RUN pip install --no-cache-dir \
     fastapi \
     uvicorn[standard] \
-    requests \
+    "requests[socks]" \
     pydantic \
     google-genai \
     apscheduler \

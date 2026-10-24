@@ -1,8 +1,7 @@
 import json
-import subprocess
-import sys
 import os
-from fastapi import FastAPI, HTTPException, Depends, status
+import sys
+from fastapi import FastAPI, HTTPException, Depends, status, BackgroundTasks
 from fastapi.responses import HTMLResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel
@@ -29,6 +28,18 @@ def verify_credentials(credentials: HTTPBasicCredentials = Depends(security)):
             headers={"WWW-Authenticate": "Basic"},
         )
     return credentials.username
+
+
+@app.get("/api/config")
+def get_config(username: str = Depends(verify_credentials)):
+    """返回前端渲染所需的基础配置（避免硬编码）"""
+    return {
+        "x_handle": settings.X_HANDLE,
+        "has_gemini_key": bool(settings.GEMINI_API_KEY and settings.GEMINI_API_KEY != "your_gemini_api_key_here"),
+        "scan_interval": settings.SCAN_INTERVAL_MINUTES,
+        "triage_model": settings.TRIAGE_MODEL,
+        "synthesis_model": settings.SYNTHESIS_MODEL,
+    }
 
 
 @app.get("/api/drafts")
@@ -94,13 +105,10 @@ def save_draft(post_id: str, payload: DraftEdit, username: str = Depends(verify_
 
 
 @app.post("/api/scan")
-def trigger_scan(username: str = Depends(verify_credentials)):
-    try:
-        subprocess.Popen([sys.executable, "-c",
-                         "import sys; sys.path.insert(0, '.'); from app.scheduler import execute_radar_cycle; execute_radar_cycle()"])
-        return {"ok": True, "message": "雷达扫描已在后台异步启动，请观察终端日志，1-2 分钟后刷新列表。"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+def trigger_scan(background_tasks: BackgroundTasks, username: str = Depends(verify_credentials)):
+    """使用 FastAPI 原生 BackgroundTasks 异步执行，保证稳定安全、跨平台零子进程报错"""
+    background_tasks.add_task(execute_radar_cycle)
+    return {"ok": True, "message": "全网雷达扫描已在后台启动，1-2 分钟后刷新页面即可查看最新草稿。"}
 
 
 @app.get("/api/sources")
@@ -158,4 +166,3 @@ def index(username: str = Depends(verify_credentials)):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.web.main:app", host="0.0.0.0", port=settings.PORT, reload=True)
-

@@ -13,6 +13,14 @@
 </head>
 <body class="h-screen flex flex-col overflow-hidden select-none">
 
+    <!-- 顶部告警条 (仅在未配置 GEMINI_API_KEY 时显示) -->
+    <div id="keyAlert" class="bg-amber-500/20 border-b border-amber-500/30 px-6 py-2 text-xs text-amber-300 hidden items-center justify-between shrink-0">
+        <div class="flex items-center gap-2">
+            <span>⚠️ <b>未检测到 GEMINI_API_KEY</b>：请在项目根目录的 <code>.env</code> 文件中配置密钥并重启服务，否则 AI 二创流水线将跳过合成。</span>
+        </div>
+        <a href="https://aistudio.google.com/" target="_blank" class="underline font-semibold hover:text-white">免费获取 API Key ↗</a>
+    </div>
+
     <!-- 顶部导航栏 -->
     <header class="h-14 border-b border-zinc-800 bg-zinc-950 px-6 flex items-center justify-between shrink-0">
         <div class="flex items-center gap-3">
@@ -65,7 +73,7 @@
             <div id="sourcesList" class="space-y-2 max-h-60 overflow-y-auto pr-2"></div>
             <!-- 添加新监控源表单 -->
             <form onsubmit="addSource(event)" class="grid grid-cols-6 gap-2 pt-2 border-t border-zinc-800">
-                <input type="text" id="newSub" placeholder="Subreddit名(例: localollama)" required class="col-span-2 bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-white outline-none">
+                <input type="text" id="newSub" placeholder="Subreddit名(例: BitcoinMarkets)" required class="col-span-2 bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-white outline-none">
                 <select id="newCat" class="bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1.5 text-xs text-white outline-none">
                     <option value="AI_DEV">AI_DEV</option>
                     <option value="FINANCE">FINANCE</option>
@@ -85,12 +93,28 @@ let drafts = [];
 let currentId = null;
 let selectedHookIdx = 0;
 let filters = { category: 'ALL', status: 'pending' };
+let appConfig = { x_handle: '@YourHandle', has_gemini_key: true };
 
 function showToast(msg) {
     const t = document.getElementById('toast');
     t.innerText = msg;
     t.classList.remove('hidden');
     setTimeout(() => t.classList.add('hidden'), 2600);
+}
+
+async function loadConfig() {
+    try {
+        const res = await fetch('/api/config');
+        if (res.ok) {
+            appConfig = await res.json();
+            if (!appConfig.has_gemini_key) {
+                document.getElementById('keyAlert').classList.remove('hidden');
+                document.getElementById('keyAlert').classList.add('flex');
+            }
+        }
+    } catch (e) {
+        console.warn("Config load failed", e);
+    }
 }
 
 function setFilter(key, val) {
@@ -207,6 +231,10 @@ function renderEditor() {
     const sourceLabel = isGithub ? 'GitHub ↗' : 'Reddit ↗';
     const sourceClass = isGithub ? 'text-purple-400' : 'text-indigo-400';
 
+    // 组合完整的长推文（当前选中的 Hook + 正文）
+    const activeHook = hooks[selectedHookIdx] || "";
+    const fullTweetText = activeHook ? `${activeHook}\n\n${item.long_post || ''}` : (item.long_post || '');
+
     document.getElementById('editorPane').innerHTML = `
         <div class="max-w-6xl mx-auto space-y-6">
             <!-- 原帖信息与操作栏 -->
@@ -238,7 +266,7 @@ function renderEditor() {
                             <label class="text-xs font-mono uppercase text-zinc-400">2. X 深度长推完整合成稿 (支持手动微调)</label>
                             <span id="wordCount" class="text-xs font-mono text-zinc-500"></span>
                         </div>
-                        <textarea id="fullTweetBox" oninput="updateCount()" rows="13" class="w-full bg-zinc-900 border border-zinc-800 focus:border-indigo-500 rounded-xl p-4 text-sm text-zinc-100 leading-relaxed outline-none font-sans select-text">${item.long_post || ''}</textarea>
+                        <textarea id="fullTweetBox" oninput="updateCount()" rows="13" class="w-full bg-zinc-900 border border-zinc-800 focus:border-indigo-500 rounded-xl p-4 text-sm text-zinc-100 leading-relaxed outline-none font-sans select-text">${fullTweetText}</textarea>
 
                         <div class="flex flex-wrap items-center gap-2 mt-3">
                             <button onclick="copyFullPost()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2.5 rounded-lg">📋 复制完整长推</button>
@@ -255,8 +283,8 @@ function renderEditor() {
                         </div>
                         <textarea id="sniperBox" rows="2" class="w-full bg-transparent text-xs text-zinc-300 outline-none resize-none select-text">${item.sniper_reply || ''}</textarea>
                         <div class="pt-2 border-t border-zinc-800 flex items-center justify-between text-xs gap-2 flex-wrap">
-                            <span class="text-zinc-500 font-mono">X搜索指令: <code class="text-indigo-300">${item.x_search_query || ''}</code></span>
-                            <button onclick="openXSearch('${(item.x_search_query || '').replace(/'/g, "\\'")}')" class="bg-amber-600/20 text-amber-400 hover:bg-amber-600/30 border border-amber-500/30 px-3 py-1 rounded font-medium whitespace-nowrap">🔍 一键去 X 找大V贴截流 ↗</button>
+                            <span class="text-zinc-500 font-mono">X搜索指令: <code class="text-indigo-300 select-all">${item.x_search_query || ''}</code></span>
+                            <button onclick="triggerXSearch()" class="bg-amber-600/20 text-amber-400 hover:bg-amber-600/30 border border-amber-500/30 px-3 py-1 rounded font-medium whitespace-nowrap">🔍 一键去 X 找大V贴截流 ↗</button>
                         </div>
                     </div>
                 </div>
@@ -293,7 +321,7 @@ function renderEditor() {
 
                         <div class="flex items-center justify-between pt-3 border-t border-zinc-800/60 text-[10px] font-mono text-zinc-500">
                             <span>${isGithub ? 'SYNTHESIZED FROM GITHUB OPEN SOURCE ARCHITECTURES' : 'SYNTHESIZED FROM PRACTITIONER DEBATES'}</span>
-                            <span contenteditable="true" class="text-zinc-400 outline-none">@YourHandle</span>
+                            <span contenteditable="true" class="text-zinc-400 outline-none">${appConfig.x_handle || '@YourHandle'}</span>
                         </div>
                     </div>
                     <p class="text-xs text-zinc-500 leading-relaxed">
@@ -310,12 +338,20 @@ function switchHook(idx) {
     selectedHookIdx = idx;
     const item = drafts.find(d => d.post_id === currentId);
     if (!item) return;
-    const hook = (item.hooks || [""])[selectedHookIdx] || "";
+    const hooks = item.hooks || [""];
+    const newHook = hooks[selectedHookIdx] || "";
     const box = document.getElementById('fullTweetBox');
-    const lines = box.value.split('\n\n');
-    lines[0] = hook;
-    box.value = lines.join('\n\n');
-    updateCount();
+    if (box) {
+        // 将第一段替换为新选择的 Hook，保留用户对正文的修改
+        const parts = box.value.split('\n\n');
+        if (parts.length > 1) {
+            parts[0] = newHook;
+            box.value = parts.join('\n\n');
+        } else {
+            box.value = newHook ? `${newHook}\n\n${box.value}` : box.value;
+        }
+        updateCount();
+    }
     renderFeedList();
 }
 
@@ -345,12 +381,17 @@ function openXIntent() {
     navigator.clipboard.writeText(text);
     showToast("📋 已复制！正在唤起 X 发帖页...");
     setTimeout(() => {
-        window.open('https://twitter.com/intent/tweet', '_blank');
-    }, 400);
+        window.open('https://x.com/compose/post', '_blank');
+    }, 300);
 }
 
-function openXSearch(query) {
-    const url = `https://twitter.com/search?q=${encodeURIComponent(query)}&src=typed_query&f=live`;
+function triggerXSearch() {
+    const item = drafts.find(d => d.post_id === currentId);
+    if (!item || !item.x_search_query) {
+        showToast("⚠️ 当前草稿无有效搜索词");
+        return;
+    }
+    const url = `https://x.com/search?q=${encodeURIComponent(item.x_search_query)}&src=typed_query&f=live`;
     window.open(url, '_blank');
 }
 
@@ -365,12 +406,15 @@ async function markStatus(postId, newStatus) {
 }
 
 async function saveEdits() {
-    const longPost = document.getElementById('fullTweetBox').value;
+    const box = document.getElementById('fullTweetBox');
     const sniperReply = document.getElementById('sniperBox').value;
+    // 提取正文（去掉第一段 Hook 后存储或整篇保存）
+    const parts = box.value.split('\n\n');
+    const bodyOnly = parts.length > 1 ? parts.slice(1).join('\n\n') : box.value;
     await fetch(`/api/drafts/${currentId}/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ long_post: longPost, sniper_reply: sniperReply })
+        body: JSON.stringify({ long_post: bodyOnly, sniper_reply: sniperReply })
     });
     showToast("💾 已保存修改");
 }
@@ -383,21 +427,21 @@ async function triggerScan() {
         const res = await fetch('/api/scan', { method: 'POST' });
         const data = await res.json();
         showToast("🛰️ " + (data.message || "全网扫描已启动"));
-        setTimeout(() => loadDrafts(), 8000);
+        setTimeout(() => loadDrafts(), 6000);
     } catch (e) {
         showToast("❌ 扫描启动失败");
     } finally {
         setTimeout(() => {
             btn.innerHTML = '<span>⚡ 扫描全网 (Reddit+GitHub)</span>';
             btn.disabled = false;
-        }, 5000);
+        }, 4000);
     }
 }
 
 async function copyCardAsImage() {
     const card = document.getElementById('visualCardCanvas');
     try {
-        const blob = await htmlToImage.toBlob(card, { pixelRatio: 2 });
+        const blob = await htmlToImage.toBlob(card, { pixelRatio: 2.5 });
         await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
         showToast("🖼️ 卡片图片已复制！去 X 发帖框 Ctrl+V 粘贴");
     } catch (e) {
@@ -407,7 +451,7 @@ async function copyCardAsImage() {
 
 async function downloadCardPng() {
     const card = document.getElementById('visualCardCanvas');
-    const dataUrl = await htmlToImage.toPng(card, { pixelRatio: 2 });
+    const dataUrl = await htmlToImage.toPng(card, { pixelRatio: 2.5 });
     const link = document.createElement('a');
     link.download = `alpha-card-${currentId}.png`;
     link.href = dataUrl;
@@ -471,7 +515,8 @@ async function addSource(e) {
     }
 }
 
-// 初始化加载
+// 启动执行：加载配置与数据
+loadConfig();
 loadDrafts();
 </script>
 </body>

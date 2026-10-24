@@ -11,6 +11,10 @@ class Settings:
     DB_PATH: str = os.getenv("DB_PATH", "/workspace/data/studio.db" if os.path.exists("/workspace") else "data/studio.db")
     SCAN_INTERVAL_MINUTES: int = int(os.getenv("SCAN_INTERVAL_MINUTES", "30"))
 
+    # AI 模型配置
+    TRIAGE_MODEL: str = os.getenv("TRIAGE_MODEL", "gemini-2.5-flash")
+    SYNTHESIS_MODEL: str = os.getenv("SYNTHESIS_MODEL", "gemini-2.5-pro")
+
     # VPS 防 403 配置
     REDDIT_PROXY_URL: str = os.getenv("REDDIT_PROXY_URL", "")
     REDDIT_CLIENT_ID: str = os.getenv("REDDIT_CLIENT_ID", "")
