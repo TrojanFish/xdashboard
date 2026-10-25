@@ -177,11 +177,27 @@ let appConfig = {
     settings: { auto_synthesize: '0', auto_scan_enabled: '1' }
 };
 
-function showToast(msg) {
+let toastTimeout = null;
+function showToast(msg, undoAction = null) {
     const t = document.getElementById('toast');
-    t.innerText = msg;
-    t.classList.remove('hidden');
-    setTimeout(() => t.classList.add('hidden'), 2600);
+    if (!t) return;
+    if (toastTimeout) clearTimeout(toastTimeout);
+    if (undoAction) {
+        t.innerHTML = `
+            <div class="flex items-center gap-3">
+                <span>${msg}</span>
+                <button onclick="${undoAction}; event.stopPropagation();" class="px-2.5 py-0.5 rounded bg-[#CC5A2B] hover:bg-[#B84E22] text-white font-semibold text-[11px] transition shadow-xs flex items-center gap-1">
+                    <span>↩️ 立即撤回</span>
+                </button>
+            </div>
+        `;
+        t.classList.remove('hidden');
+        toastTimeout = setTimeout(() => t.classList.add('hidden'), 5500);
+    } else {
+        t.innerText = msg;
+        t.classList.remove('hidden');
+        toastTimeout = setTimeout(() => t.classList.add('hidden'), 2800);
+    }
 }
 
 function renderHeaderSettings() {
@@ -465,6 +481,25 @@ function renderEditor() {
 
     // 分支 1：处于未二创的原始情报状态 (待手动二创模式)
     if (isRaw) {
+        let rawActionsHtml = '';
+        if (item.status === 'archived') {
+            rawActionsHtml = `
+                <button onclick="markStatus('${item.post_id}', 'raw_unprocessed')" class="px-3.5 py-2 rounded-lg bg-[#CC5A2B] hover:bg-[#B84E22] text-white text-xs font-semibold transition shadow-sm font-sans flex items-center gap-1">
+                    <span>↩️ 恢复至待办</span>
+                </button>
+                <button id="synthBtn" onclick="synthesizeDraft('${item.post_id}')" class="bg-[#201E1C] hover:bg-[#3D3933] text-white text-xs font-semibold px-4 py-2 rounded-lg transition shadow-sm font-sans flex items-center gap-1.5">
+                    <span>🤖 立即调用 AI 深度二创</span>
+                </button>
+            `;
+        } else {
+            rawActionsHtml = `
+                <button onclick="markStatus('${item.post_id}', 'archived', 'raw_unprocessed')" class="px-3 py-2 rounded-lg border border-[#DDD6C8] hover:bg-[#F3EFE9] text-xs text-[#524E48] transition font-sans">🗑️ 归档忽略</button>
+                <button id="synthBtn" onclick="synthesizeDraft('${item.post_id}')" class="bg-[#CC5A2B] hover:bg-[#B84E22] text-white text-xs font-semibold px-4 py-2 rounded-lg transition shadow-sm font-sans flex items-center gap-1.5">
+                    <span>🤖 立即调用 AI 深度二创</span>
+                </button>
+            `;
+        }
+
         document.getElementById('editorPane').innerHTML = `
             <div class="max-w-4xl mx-auto space-y-6">
                 <!-- 顶部线索信息与操作栏 -->
@@ -479,10 +514,7 @@ function renderEditor() {
                         <h2 class="text-base font-bold text-[#201E1C] select-text font-sans">${item.title}</h2>
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
-                        <button onclick="markStatus('${item.post_id}', 'archived')" class="px-3 py-2 rounded-lg border border-[#DDD6C8] hover:bg-[#F3EFE9] text-xs text-[#524E48] transition font-sans">🗑️ 归档忽略</button>
-                        <button id="synthBtn" onclick="synthesizeDraft('${item.post_id}')" class="bg-[#CC5A2B] hover:bg-[#B84E22] text-white text-xs font-semibold px-4 py-2 rounded-lg transition shadow-sm font-sans flex items-center gap-1.5">
-                            <span>🤖 立即调用 AI 深度二创</span>
-                        </button>
+                        ${rawActionsHtml}
                     </div>
                 </div>
 
@@ -554,6 +586,37 @@ ${item.selftext || item.title || '（该项目为开源代码库或短贴，点�
     const activeBody = (currentFormat === 'short' && item.short_post) ? item.short_post : (item.long_post || '');
     const fullTweetText = activeHook ? `${activeHook}\n\n${activeBody}` : activeBody;
 
+    // 动态操作按钮：支持发布后一键撤回，归档后一键恢复
+    let actionButtonsHtml = '';
+    if (item.status === 'published') {
+        actionButtonsHtml = `
+            <button id="reSynthBtn" onclick="synthesizeDraft('${item.post_id}')" title="使用最新模型重新生成" class="px-3 py-1.5 rounded-lg border border-[#DDD6C8] hover:bg-[#F3EFE9] text-xs text-[#524E48] transition font-sans flex items-center gap-1">
+                <span>🔄 重新二创</span>
+            </button>
+            <button onclick="markStatus('${item.post_id}', 'archived', 'published')" class="px-3 py-1.5 rounded-lg border border-[#DDD6C8] hover:bg-[#F3EFE9] text-xs text-[#524E48] transition font-sans">🗑️ 归档</button>
+            <button onclick="markStatus('${item.post_id}', 'pending')" class="px-3.5 py-1.5 rounded-lg bg-[#D97706] hover:bg-[#B45309] text-xs font-semibold text-white transition shadow-sm font-sans flex items-center gap-1.5">
+                <span>↩️ 撤回至草稿箱 (恢复待发布)</span>
+            </button>
+        `;
+    } else if (item.status === 'archived') {
+        actionButtonsHtml = `
+            <button id="reSynthBtn" onclick="synthesizeDraft('${item.post_id}')" title="使用最新模型重新生成" class="px-3 py-1.5 rounded-lg border border-[#DDD6C8] hover:bg-[#F3EFE9] text-xs text-[#524E48] transition font-sans flex items-center gap-1">
+                <span>🔄 重新二创</span>
+            </button>
+            <button onclick="markStatus('${item.post_id}', 'pending')" class="px-3.5 py-1.5 rounded-lg bg-[#CC5A2B] hover:bg-[#B84E22] text-xs font-semibold text-white transition shadow-sm font-sans flex items-center gap-1.5">
+                <span>↩️ 移回草稿箱 (恢复待发布)</span>
+            </button>
+        `;
+    } else {
+        actionButtonsHtml = `
+            <button id="reSynthBtn" onclick="synthesizeDraft('${item.post_id}')" title="使用最新模型与提示词重新生成长短推文与数据卡片" class="px-3 py-1.5 rounded-lg border border-[#DDD6C8] hover:bg-[#F3EFE9] text-xs text-[#524E48] transition font-sans flex items-center gap-1">
+                <span>🔄 重新二创</span>
+            </button>
+            <button onclick="markStatus('${item.post_id}', 'archived', 'pending')" class="px-3 py-1.5 rounded-lg border border-[#DDD6C8] hover:bg-[#F3EFE9] text-xs text-[#524E48] transition font-sans">🗑️ 归档跳过</button>
+            <button onclick="markStatus('${item.post_id}', 'published', 'pending')" class="px-3 py-1.5 rounded-lg bg-[#386641] hover:bg-[#2F5236] text-xs font-medium text-white transition shadow-sm font-sans">✅ 标记已发布</button>
+        `;
+    }
+
     document.getElementById('editorPane').innerHTML = `
         <div class="max-w-6xl mx-auto space-y-6">
             <!-- 原帖信息与操作栏 (温和纸白面板) -->
@@ -567,11 +630,7 @@ ${item.selftext || item.title || '（该项目为开源代码库或短贴，点�
                     <div class="text-sm font-semibold text-[#201E1C] select-text font-sans">${item.title}</div>
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
-                    <button id="reSynthBtn" onclick="synthesizeDraft('${item.post_id}')" title="使用最新模型与提示词重新生成长短推文与数据卡片" class="px-3 py-1.5 rounded-lg border border-[#DDD6C8] hover:bg-[#F3EFE9] text-xs text-[#524E48] transition font-sans flex items-center gap-1">
-                        <span>🔄 重新二创</span>
-                    </button>
-                    <button onclick="markStatus('${item.post_id}', 'archived')" class="px-3 py-1.5 rounded-lg border border-[#DDD6C8] hover:bg-[#F3EFE9] text-xs text-[#524E48] transition font-sans">🗑️ 归档跳过</button>
-                    <button onclick="markStatus('${item.post_id}', 'published')" class="px-3 py-1.5 rounded-lg bg-[#386641] hover:bg-[#2F5236] text-xs font-medium text-white transition shadow-sm font-sans">✅ 标记已发布</button>
+                    ${actionButtonsHtml}
                 </div>
             </div>
 
@@ -773,13 +832,23 @@ function triggerXSearch() {
     window.open(url, '_blank');
 }
 
-async function markStatus(postId, newStatus) {
+async function markStatus(postId, newStatus, prevStatus = 'pending') {
     await fetch(`/api/drafts/${postId}/status`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus })
     });
-    showToast(newStatus === 'published' ? '✅ 已标记发布！' : '🗑️ 已归档');
+    if (newStatus === 'published') {
+        showToast('✅ 已移入已发布列表', `markStatus('${postId}', 'pending')`);
+    } else if (newStatus === 'archived') {
+        showToast('🗑️ 已归档跳过', `markStatus('${postId}', '${prevStatus}')`);
+    } else if (newStatus === 'pending') {
+        showToast('↩️ 已成功撤回至待发布草稿箱！');
+    } else if (newStatus === 'raw_unprocessed') {
+        showToast('↩️ 已成功恢复至待二创原始线索！');
+    } else {
+        showToast('状态已更新');
+    }
     loadDrafts();
 }
 

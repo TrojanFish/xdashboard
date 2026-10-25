@@ -107,9 +107,9 @@ def build_signal_inline_keyboard(post_id: str, long_post: str = "", status: str 
     ]
 
     if status == "published":
-        row2[1] = {"text": "✅ 已发布", "callback_data": f"noop:{post_id}"}
+        row2[1] = {"text": "↩️ 撤回待发布", "callback_data": f"unpub:{post_id}"}
     elif status == "archived":
-        row3[0] = {"text": "📦 已归档", "callback_data": f"noop:{post_id}"}
+        row3[0] = {"text": "↩️ 恢复待发布", "callback_data": f"unarch:{post_id}"}
 
     buttons.append(row1)
     buttons.append(row2)

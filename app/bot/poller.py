@@ -324,6 +324,15 @@ class BotPoller:
             self.client.edit_message_text(chat_id, message_id, msg.get("text", ""), reply_markup=new_kb)
             self.client.answer_callback_query(cb_id, text="🗑️ 已归档跳过")
 
+        elif action in ("unpub", "unarch"):
+            conn.execute("UPDATE drafts SET status = 'pending' WHERE post_id = ?", (post_id,))
+            conn.commit()
+            conn.close()
+
+            new_kb = build_signal_inline_keyboard(post_id, status="pending")
+            self.client.edit_message_text(chat_id, message_id, msg.get("text", ""), reply_markup=new_kb)
+            self.client.answer_callback_query(cb_id, text="↩️ 已撤回至待发布草稿箱！")
+
         elif action == "synth":
             conn.close()
             self.client.answer_callback_query(cb_id, text="⚙️ 正在重新调用 AI 深度重塑...")
