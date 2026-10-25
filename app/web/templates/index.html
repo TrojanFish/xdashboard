@@ -616,7 +616,7 @@ ${item.selftext || item.title || '（该项目为开源代码库或短贴，点�
                     </div>
 
                     <!-- 卡片画布 (Claude Warm Editorial Paper Card) -->
-                    <div id="visualCardCanvas" class="w-full aspect-video min-h-fit bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-[#F5F0E8] border-2 border-[#DDD6C8] rounded-2xl p-4 sm:p-5 flex flex-col justify-between relative shadow-md">
+                    <div id="visualCardCanvas" class="w-full bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-[#F5F0E8] border-2 border-[#DDD6C8] rounded-2xl p-4 sm:p-5 flex flex-col justify-between relative shadow-md min-h-[250px]">
                         <div class="flex items-center justify-between border-b border-[#E6E0D4] pb-2 sm:pb-2.5 shrink-0">
                             <div class="flex items-center gap-1.5">
                                 <span class="w-2.5 h-2.5 rounded-full bg-[#E06A55]"></span>
@@ -631,13 +631,13 @@ ${item.selftext || item.title || '（该项目为开源代码库或短贴，点�
                             <h2 contenteditable="true" class="text-sm sm:text-base font-bold text-[#1C1A17] tracking-tight leading-snug outline-none font-sans">${(item.card && item.card.title) || item.title}</h2>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-2 my-1.5 sm:my-auto">
+                        <div class="grid grid-cols-2 gap-2 my-2 sm:my-auto">
                             ${metricsHtml}
                         </div>
 
-                        <div class="flex items-center justify-between pt-2 sm:pt-2.5 mt-1 sm:mt-2 border-t border-[#E6E0D4] text-[9px] sm:text-[10px] font-mono text-[#8C867D] shrink-0">
-                            <span>${isGithub ? 'SYNTHESIZED FROM GITHUB OPEN SOURCE ARCHITECTURES' : (isHN ? 'SYNTHESIZED FROM SILICON VALLEY PRACTITIONER DEBATES' : 'SYNTHESIZED FROM PRACTITIONER INSIGHTS')}</span>
-                            <span contenteditable="true" class="text-[#CC5A2B] font-semibold outline-none">${appConfig.x_handle || '@YourHandle'}</span>
+                        <div class="flex items-center justify-between pt-2.5 mt-2 border-t border-[#E6E0D4] text-[9px] sm:text-[10px] font-mono text-[#8C867D] shrink-0">
+                            <span class="truncate mr-2">${isGithub ? 'SYNTHESIZED FROM GITHUB OPEN SOURCE ARCHITECTURES' : (isHN ? 'SYNTHESIZED FROM SILICON VALLEY PRACTITIONER DEBATES' : 'SYNTHESIZED FROM PRACTITIONER INSIGHTS')}</span>
+                            <span contenteditable="true" class="text-[#CC5A2B] font-semibold outline-none shrink-0">${appConfig.x_handle || '@YourHandle'}</span>
                         </div>
                     </div>
                     <p class="text-xs text-[#7A746B] leading-relaxed font-sans">
