@@ -479,19 +479,17 @@ function renderEditor() {
 ${item.selftext || item.title || '（该项目为开源代码库或短贴，点击右上角来源链接可查看原始完整仓库）'}
                     </div>
 
-                    <!-- 引导二创卡片 -->
-                    <div class="bg-[#FFF8F5] border border-[#FCD9CC] rounded-xl p-5 flex flex-col md:flex-row items-center justify-between gap-4">
-                        <div class="space-y-1">
-                            <div class="font-semibold text-sm text-[#201E1C] flex items-center gap-1.5 font-sans">
-                                <span class="text-[#CC5A2B]">💡</span> 一键启动 AI 双飞轮深度二创
+                    <!-- 引导二创说明卡片 -->
+                    <div class="bg-[#FFF8F5] border border-[#FCD9CC] rounded-xl p-4 flex items-start gap-3">
+                        <span class="text-base leading-none text-[#CC5A2B] mt-0.5">💡</span>
+                        <div class="space-y-0.5">
+                            <div class="font-semibold text-xs text-[#201E1C] font-sans">
+                                AI 双飞轮深度二创
                             </div>
-                            <div class="text-xs text-[#6E6860] leading-normal font-sans">
-                                调度 <b>Gemini 3.1 Pro</b> 自动提炼黄金 Hook 前两行、300字深度长推（含反共识论点与商业经济学推演）、极简短推、大V截流狙击评论、以及 16:9 雅致数据卡片。
+                            <div class="text-xs text-[#6E6860] leading-relaxed font-sans">
+                                点击右上角「立即调用 AI 深度二创」，将调度 <b>Gemini 3.1 Pro</b> 自动提炼黄金 Hook 前两行、300字深度长推（含反共识论点与商业经济学推演）、极简短推、大V截流狙击评论、以及 16:9 雅致数据卡片。
                             </div>
                         </div>
-                        <button onclick="synthesizeDraft('${item.post_id}')" class="bg-[#CC5A2B] hover:bg-[#B84E22] text-white text-xs font-semibold px-5 py-2.5 rounded-lg transition shadow-sm shrink-0 font-sans flex items-center gap-1.5">
-                            <span>⚡ 立即二创此情报</span>
-                        </button>
                     </div>
                 </div>
             </div>
