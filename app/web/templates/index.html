@@ -514,12 +514,12 @@ ${item.selftext || item.title || '（该项目为开源代码库或短贴，点�
         const dot = m.sentiment === 'positive' ? 'bg-[#2E7D32]' : (m.sentiment === 'negative' ? 'bg-[#C0392B]' : 'bg-[#706B63]');
         const border = m.sentiment === 'positive' ? 'border-[#C4DECA] bg-[#EDF6EE] text-[#1B4D2E]' : (m.sentiment === 'negative' ? 'border-[#F7CCD0] bg-[#FDF0F1] text-[#7A1C24]' : 'border-[#E5DFD4] bg-[#FFFFFF] text-[#2E2B27]');
         return `
-        <div class="p-3 rounded-lg border ${border} flex flex-col justify-between shadow-xs">
-            <div class="flex items-center gap-2 mb-1">
-                <span class="w-2 h-2 rounded-full ${dot}"></span>
-                <span class="text-[11px] font-mono uppercase tracking-wider text-[#757067] font-semibold">${m.label}</span>
+        <div class="p-2.5 sm:p-3 rounded-lg border ${border} flex flex-col justify-between shadow-xs">
+            <div class="flex items-center gap-1.5 mb-1 shrink-0">
+                <span class="w-2 h-2 rounded-full shrink-0 ${dot}"></span>
+                <span class="text-[10px] sm:text-[11px] font-mono uppercase tracking-wider text-[#757067] font-semibold truncate">${m.label}</span>
             </div>
-            <div class="text-xs font-semibold leading-snug font-sans">${m.value}</div>
+            <div class="text-xs font-semibold leading-snug font-sans break-words">${m.value}</div>
         </div>`;
     }).join('');
 
@@ -560,7 +560,7 @@ ${item.selftext || item.title || '（该项目为开源代码库或短贴，点�
                 <div class="lg:col-span-7 space-y-4">
                     <div>
                         <label class="text-xs font-mono uppercase text-[#7A746B] block mb-2 font-medium">1. 点击切换黄金前两行 (Hook Options)</label>
-                        <div class="space-y-2">${hooksHtml}</div>
+                        <div id="hookOptionsContainer" class="space-y-2">${hooksHtml}</div>
                     </div>
 
                     <div>
@@ -614,8 +614,8 @@ ${item.selftext || item.title || '（该项目为开源代码库或短贴，点�
                     </div>
 
                     <!-- 卡片画布 (Claude Warm Editorial Paper Card) -->
-                    <div id="visualCardCanvas" class="w-full aspect-video bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-[#F5F0E8] border-2 border-[#DDD6C8] rounded-2xl p-6 flex flex-col justify-between relative overflow-hidden shadow-md">
-                        <div class="flex items-center justify-between border-b border-[#E6E0D4] pb-3">
+                    <div id="visualCardCanvas" class="w-full aspect-video min-h-fit bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-[#F5F0E8] border-2 border-[#DDD6C8] rounded-2xl p-4 sm:p-5 flex flex-col justify-between relative shadow-md">
+                        <div class="flex items-center justify-between border-b border-[#E6E0D4] pb-2 sm:pb-2.5 shrink-0">
                             <div class="flex items-center gap-1.5">
                                 <span class="w-2.5 h-2.5 rounded-full bg-[#E06A55]"></span>
                                 <span class="w-2.5 h-2.5 rounded-full bg-[#E5A93C]"></span>
@@ -625,15 +625,15 @@ ${item.selftext || item.title || '（该项目为开源代码库或短贴，点�
                             <span class="text-[11px] font-mono ${isGithub ? 'text-[#553C9A] bg-[#F3EFFB] border-[#DDD3F5]' : (isHN ? 'text-[#C2410C] bg-[#FFF4E5] border-[#FED7AA]' : 'text-[#CC5A2B] bg-[#FFF2ED] border-[#FCD9CC]')} border px-2 py-0.5 rounded font-semibold">${isGithub ? 'GITHUB ALPHA' : (isHN ? 'Y COMBINATOR / HN' : 'RESEARCH MEMO')}</span>
                         </div>
 
-                        <div class="my-2">
-                            <h2 contenteditable="true" class="text-base font-bold text-[#1C1A17] tracking-tight leading-snug outline-none font-sans">${(item.card && item.card.title) || item.title}</h2>
+                        <div class="my-1.5 sm:my-2 shrink-0">
+                            <h2 contenteditable="true" class="text-sm sm:text-base font-bold text-[#1C1A17] tracking-tight leading-snug outline-none font-sans">${(item.card && item.card.title) || item.title}</h2>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-2 my-auto">
+                        <div class="grid grid-cols-2 gap-2 my-1.5 sm:my-auto">
                             ${metricsHtml}
                         </div>
 
-                        <div class="flex items-center justify-between pt-3 border-t border-[#E6E0D4] text-[10px] font-mono text-[#8C867D]">
+                        <div class="flex items-center justify-between pt-2 sm:pt-2.5 mt-1 sm:mt-2 border-t border-[#E6E0D4] text-[9px] sm:text-[10px] font-mono text-[#8C867D] shrink-0">
                             <span>${isGithub ? 'SYNTHESIZED FROM GITHUB OPEN SOURCE ARCHITECTURES' : (isHN ? 'SYNTHESIZED FROM SILICON VALLEY PRACTITIONER DEBATES' : 'SYNTHESIZED FROM PRACTITIONER INSIGHTS')}</span>
                             <span contenteditable="true" class="text-[#CC5A2B] font-semibold outline-none">${appConfig.x_handle || '@YourHandle'}</span>
                         </div>
@@ -646,6 +646,20 @@ ${item.selftext || item.title || '（该项目为开源代码库或短贴，点�
         </div>
     `;
     updateCount();
+}
+
+function renderHookOptions() {
+    const item = drafts.find(d => d.post_id === currentId);
+    if (!item) return;
+    const hooks = item.hooks || [""];
+    const container = document.getElementById('hookOptionsContainer');
+    if (!container) return;
+    container.innerHTML = hooks.map((h, idx) => `
+        <div onclick="switchHook(${idx})" class="p-3 rounded-lg border cursor-pointer transition text-sm select-text ${idx === selectedHookIdx ? 'border-[#CC5A2B] bg-[#FFF8F5] text-[#201E1C] ring-1 ring-[#CC5A2B]/20 shadow-sm' : 'border-[#E5DFD4] bg-[#FFFFFF] text-[#4A453E] hover:border-[#CC5A2B]/40 hover:bg-[#FAF8F5]'}">
+            <div class="text-xs font-mono text-[#CC5A2B] mb-1 font-medium">HOOK 备选 #${idx + 1} ${idx === selectedHookIdx ? '(已激活)' : ''}</div>
+            <div class="leading-relaxed font-sans">${h}</div>
+        </div>
+    `).join('');
 }
 
 function switchHook(idx) {
@@ -666,7 +680,7 @@ function switchHook(idx) {
         }
         updateCount();
     }
-    renderFeedList();
+    renderHookOptions();
 }
 
 function switchFormat(fmt) {
