@@ -9,3 +9,5 @@ services:
       - .env
     volumes:
       - ./data:/workspace/data
+      - ./app:/workspace/app
+      - ./scripts:/workspace/scripts
