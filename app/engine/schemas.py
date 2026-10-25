@@ -36,3 +36,5 @@ class SynthesizedDraft(BaseModel):
     visual_card_title: str = Field(default="", description="Headline for the 16:9 dark mode visual summary card")
     visual_card_type: Literal["terminal_benchmark", "bull_vs_bear", "capital_impact", "github_repo_card"] = "terminal_benchmark"
     visual_card_metrics: List[CardMetric] = Field(default_factory=list, description="4 structured items for the visual card grid")
+    hashtags: List[str] = Field(default_factory=list, description="1-3 high-reach hashtags relevant to this topic, e.g. ['#AI', '#Bitcoin', '#SP500']. No emoji in hashtags.")
+    thread_posts: List[str] = Field(default_factory=list, description="Optional: If content_tier is DEEP_DIVE_MEMO, provide 3-6 sequential thread sub-posts (each ≤280 chars) that expand the main hook into a cohesive narrative thread. Leave empty for FLASH_PUNCH.")

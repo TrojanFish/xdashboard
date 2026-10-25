@@ -97,6 +97,10 @@ def init_db():
     default_settings = [
         ("auto_synthesize", "0"),    # 0: 仅抓取原始情报，待用户手动挑选二创 (省 Token / 默认推荐); 1: 抓取后自动二创
         ("auto_scan_enabled", "1"),  # 1: 开启后台定时巡航; 0: 暂停后台自动巡航 (仅允许手动点击扫描)
+        ("content_language", "en"),  # 'en' = English, 'zh' = Simplified Chinese
+        ("hook_pref_1", "0"),        # count of times Hook #1 was chosen
+        ("hook_pref_2", "0"),
+        ("hook_pref_3", "0"),
     ]
     c.executemany("INSERT OR IGNORE INTO system_settings (key, value) VALUES (?, ?)", default_settings)
 
@@ -107,6 +111,10 @@ def init_db():
         c.execute("ALTER TABLE drafts ADD COLUMN content_tier TEXT DEFAULT 'DEEP_DIVE_MEMO'")
     if "short_post" not in draft_cols:
         c.execute("ALTER TABLE drafts ADD COLUMN short_post TEXT")
+    if "hashtags_json" not in draft_cols:
+        c.execute("ALTER TABLE drafts ADD COLUMN hashtags_json TEXT DEFAULT '[]'")
+    if "thread_json" not in draft_cols:
+        c.execute("ALTER TABLE drafts ADD COLUMN thread_json TEXT DEFAULT '[]'")
 
     # 动态平滑迁移：将已有旧版 'FINANCE' 细化归类为清晰的二级赛道
     c.execute("UPDATE watch_sources SET category = 'MACRO_STOCKS' WHERE subreddit IN ('stocks', 'wallstreetbets', 'investing', 'ValueInvesting', 'options', 'algotrading') AND category = 'FINANCE'")
@@ -206,8 +214,8 @@ def save_raw_signal_only(signal: Dict[str, Any]):
     # 创建待二创占位记录
     c.execute("""
         INSERT OR IGNORE INTO drafts
-        (post_id, persona_id, status, worth_posting, skip_reason, narrative_framework, content_tier, hooks_json, short_post, long_post, sniper_reply, x_search_query, card_json)
-        VALUES (?, 1, 'raw_unprocessed', 1, '', 'Pending AI Synthesis', 'DEEP_DIVE_MEMO', '[]', '', '', '', '', '{}')
+        (post_id, persona_id, status, worth_posting, skip_reason, narrative_framework, content_tier, hooks_json, short_post, long_post, sniper_reply, x_search_query, card_json, hashtags_json, thread_json)
+        VALUES (?, 1, 'raw_unprocessed', 1, '', 'Pending AI Synthesis', 'DEEP_DIVE_MEMO', '[]', '', '', '', '', '{}', '[]', '[]')
     """, (signal["post_id"],))
     conn.commit()
     conn.close()
@@ -267,8 +275,8 @@ def save_signal_and_draft(signal: Dict[str, Any], draft_data: Dict[str, Any], pe
 
     c.execute("""
         INSERT OR REPLACE INTO drafts
-        (post_id, persona_id, status, worth_posting, skip_reason, narrative_framework, content_tier, hooks_json, short_post, long_post, sniper_reply, x_search_query, card_json)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (post_id, persona_id, status, worth_posting, skip_reason, narrative_framework, content_tier, hooks_json, short_post, long_post, sniper_reply, x_search_query, card_json, hashtags_json, thread_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         signal["post_id"],
         persona_id,
@@ -286,7 +294,9 @@ def save_signal_and_draft(signal: Dict[str, Any], draft_data: Dict[str, Any], pe
             "title": draft_data.get("visual_card_title", ""),
             "type": draft_data.get("visual_card_type", "terminal_benchmark"),
             "metrics": draft_data.get("visual_card_metrics", [])
-        }, ensure_ascii=False)
+        }, ensure_ascii=False),
+        json.dumps(draft_data.get("hashtags", []), ensure_ascii=False),
+        json.dumps(draft_data.get("thread_posts", []), ensure_ascii=False),
     ))
     conn.commit()
     conn.close()

@@ -163,6 +163,9 @@ Content snippet: {signal['selftext'][:700]}
    - Provide a 60-80 word technical insight to reply under big tech influencers discussing this space.
    - Provide an X search query with core keywords (e.g. repo name or tech concept) + `min_faves:30 -filter:replies lang:en`.
 7. **BANNED AI SLOP WORDS**: Strictly forbidden: {persona['banned_words']}.
+8. **HASHTAGS & THREAD FORMAT**:
+   - Provide `hashtags`: 1-3 laser-targeted hashtags (e.g. #OpenSource, #Python, #AI).
+   - If `content_tier` is DEEP_DIVE_MEMO, provide `thread_posts`: 4-6 thread posts (each ≤280 chars) that break down the repo teardown into a cohesive X thread. Start thread_posts[0] with "🧵 Thread:" and end the last with "— What's your take?"
 """
         else:
             comments_block = "\n".join(signal.get("top_comments", [])) or "No top comments yet."
@@ -200,8 +203,15 @@ Content snippet: {signal['selftext'][:700]}
    - Craft `reply_sniper_text` (60-90 words) packed with the sharpest counter-intuitive data point from the comments so the user can drop it under big X influencers' posts to farm Verified followers.
    - Craft `x_search_query` using 1-2 core keywords/tickers from this topic + `min_faves:30 -filter:replies lang:en` so the user can 1-click find viral tweets to reply to right now.
 7. **BANNED AI SLOP WORDS**: Strictly forbidden: {persona['banned_words']}.
+8. **HASHTAGS & THREAD FORMAT**:
+   - Provide `hashtags`: 1-3 laser-targeted hashtags relevant to this topic (e.g. #Bitcoin, #Fed, #AI, #SP500, #DeFi).
+   - If `content_tier` is DEEP_DIVE_MEMO, provide `thread_posts`: 4-6 thread posts (each ≤280 chars) that expand the analysis into a cohesive narrative X thread. Start with "🧵 Thread:" and close with a sharp polarizing question.
 """
 
-        resp = self._generate_with_fallback(prompt, SynthesizedDraft, FALLBACK_SYNTHESIS_MODELS, temperature=0.7)
+        # Read language setting and append language instruction
+        from app.database import get_setting as _get_setting
+        lang = _get_setting("content_language", "en")
+        if lang == "zh":
+            prompt += "\n\n### OUTPUT LANGUAGE REQUIREMENT\nYou MUST write ALL fields (hook_options, short_post, long_form_body, reply_sniper_text, visual_card_title, all CardMetric labels and values, x_search_query) entirely in Simplified Chinese (简体中文). The x_search_query should still use English keywords + X search syntax."
         draft_obj = SynthesizedDraft.model_validate_json(resp.text)
         return draft_obj.model_dump()

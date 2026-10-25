@@ -205,6 +205,56 @@ def get_rss_feed(request: Request):
     return Response(content=xml_content, media_type="application/xml")
 
 
+@app.get("/api/drafts/{post_id}/card.png", response_class=Response)
+def render_draft_card(post_id: str, username: str = Depends(verify_credentials)):
+    """渲染草稿视觉数据卡片为 16:9 暗黑风格 PNG 图片，可直接下载附加到 X 发帖"""
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT d.card_json, r.title, r.category, r.subreddit FROM drafts d "
+        "JOIN raw_signals r ON d.post_id = r.post_id WHERE d.post_id = ?",
+        (post_id,)
+    ).fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(status_code=404, detail="草稿不存在")
+
+    try:
+        card_data = json.loads(row["card_json"]) if row["card_json"] else {}
+    except Exception:
+        card_data = {}
+
+    category = row["category"] or ""
+    subreddit = row["subreddit"] or ""
+    source_map = {
+        "GITHUB_TRENDING": "⭐ GitHub Trending",
+        "AI_DEV": f"🤖 AI Dev",
+        "MACRO_STOCKS": "📈 MarketWatch Macro",
+        "COMMODITIES_ENERGY": "🛢️ OilPrice Energy",
+        "CRYPTO_ALPHA": "🪙 CoinGecko Crypto",
+    }
+    source_label = source_map.get(category, f"r/{subreddit}")
+    if subreddit == "hackernews":
+        source_label = "🟠 Hacker News"
+
+    from app.engine.card_renderer import render_card
+    png_bytes = render_card(
+        card_data=card_data,
+        signal_title=row["title"] or "",
+        category=category,
+        source_label=source_label,
+    )
+
+    if not png_bytes:
+        raise HTTPException(status_code=503,
+                            detail="PNG 渲染失败，请确认容器中已安装 Pillow (pip install Pillow)")
+
+    return Response(
+        content=png_bytes,
+        media_type="image/png",
+        headers={"Content-Disposition": f'attachment; filename="alpha_card_{post_id[:12]}.png"'}
+    )
+
+
 @app.get("/api/config")
 def get_config(username: str = Depends(verify_credentials)):
     """返回前端渲染所需的基础配置与系统开关"""
@@ -219,6 +269,11 @@ def get_config(username: str = Depends(verify_credentials)):
         "synthesis_model": settings.SYNTHESIS_MODEL,
         "username": username,
         "settings": get_all_settings(),
+        "hook_prefs": {
+            "hook_1": int(get_setting("hook_pref_1", "0")),
+            "hook_2": int(get_setting("hook_pref_2", "0")),
+            "hook_3": int(get_setting("hook_pref_3", "0")),
+        },
     }
 
 
@@ -238,6 +293,23 @@ def update_setting(payload: SettingUpdate, username: str = Depends(verify_creden
     """更新单个系统开关设置"""
     set_setting(payload.key, payload.value)
     return {"ok": True, "settings": get_all_settings()}
+
+
+class HookPrefUpdate(BaseModel):
+    hook_index: int  # 0-based index
+
+@app.post("/api/hook_selected")
+def record_hook_selection(payload: HookPrefUpdate, username: str = Depends(verify_credentials)):
+    """记录用户选择了第几个 Hook，用于偏好统计分析"""
+    key = f"hook_pref_{payload.hook_index + 1}"
+    conn = get_conn()
+    row = conn.execute("SELECT value FROM system_settings WHERE key = ?", (key,)).fetchone()
+    current = int(row["value"]) if row else 0
+    conn.execute("INSERT OR REPLACE INTO system_settings (key, value) VALUES (?, ?)",
+                 (key, str(current + 1)))
+    conn.commit()
+    conn.close()
+    return {"ok": True}
 
 
 @app.get("/api/drafts")
@@ -282,9 +354,13 @@ def get_drafts(category: str = "ALL", status: str = "all_active", limit: int = 1
         try:
             item["hooks"] = json.loads(item["hooks_json"]) if item["hooks_json"] else []
             item["card"] = json.loads(item["card_json"]) if item["card_json"] else {}
+            item["hashtags"] = json.loads(item.get("hashtags_json") or "[]")
+            item["thread_posts"] = json.loads(item.get("thread_json") or "[]")
         except Exception:
             item["hooks"] = []
             item["card"] = {}
+            item["hashtags"] = []
+            item["thread_posts"] = []
         results.append(item)
     return results
 

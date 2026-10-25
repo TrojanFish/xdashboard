@@ -68,6 +68,11 @@
 
             <div class="h-4 w-[1px] bg-[#E2DBD0] mx-0.5"></div>
 
+            <!-- 核心开关：输出语言 中/英 -->
+            <button onclick="toggleLanguage()" id="langBtn" title="点击切换 AI 二创输出语言：英文(EN) 适合英文受众，中文(ZH) 适合中文账号" class="px-2.5 py-1.5 rounded-lg border text-xs font-medium font-sans flex items-center gap-1.5 transition bg-[#F3EFE9] text-[#524E48] border-[#E0DBD0]">
+                <span id="langBtnText">🌐 输出: EN</span>
+            </button>
+
             <!-- 核心开关：自动二创 / 手动精选 -->
             <button onclick="toggleSetting('auto_synthesize')" id="autoSynthBtn" title="点击切换：全自动二创 VS 仅抓取原始情报(省Token/手动精选)" class="px-2.5 py-1.5 rounded-lg border text-xs font-medium font-sans flex items-center gap-1.5 transition">
                 <span class="w-2 h-2 rounded-full bg-[#2E7D32]"></span>
@@ -162,6 +167,19 @@
         </div>
     </div>
 
+    <!-- 今日发帖节奏面板 (发布计数 + 最优时间窗口提示) -->
+    <div id="rhythmBar" class="hidden bg-[#F5F1EA] border-b border-[#E8E2D8] px-6 py-1.5 flex items-center gap-6 text-xs font-sans text-[#524E48] shrink-0">
+        <span class="font-semibold text-[#201E1C]">📅 今日节奏</span>
+        <span id="rhythmPublished">✅ 已发: <b id="todayPublished">0</b> 条主帖</span>
+        <span>·</span>
+        <span>💬 建议评论互动: <b>10-20 条</b>/天</span>
+        <span>·</span>
+        <span>⏰ 最优发帖窗口 (UTC+8): <b class="text-[#CC5A2B]">21:00–24:00 · 07:00–09:00</b></span>
+        <span class="ml-auto">
+            <span id="hookPrefBadge" class="hidden font-mono text-[#7A746B]"></span>
+        </span>
+    </div>
+
     <!-- 底部 Toast -->
     <div id="toast" class="fixed bottom-5 right-5 bg-[#201E1C] text-white text-xs font-medium px-4 py-2.5 rounded-lg shadow-xl hidden transition-all z-50 font-sans"></div>
 
@@ -204,6 +222,7 @@ function renderHeaderSettings() {
     const s = appConfig.settings || {};
     const autoSynth = s.auto_synthesize === '1';
     const autoScan = s.auto_scan_enabled !== '0';
+    const lang = s.content_language || 'en';
 
     const synthBtn = document.getElementById('autoSynthBtn');
     const synthText = document.getElementById('autoSynthText');
@@ -228,6 +247,19 @@ function renderHeaderSettings() {
             scanBtn.innerHTML = '<span class="w-2 h-2 rounded-full bg-[#A8A29E]"></span><span>⏱️ 巡航: 暂停</span>';
         }
     }
+
+    // 语言按钮
+    const langBtn = document.getElementById('langBtn');
+    const langBtnText = document.getElementById('langBtnText');
+    if (langBtn && langBtnText) {
+        if (lang === 'zh') {
+            langBtn.className = "px-2.5 py-1.5 rounded-lg border text-xs font-medium font-sans flex items-center gap-1.5 transition bg-[#EDF4FF] text-[#1E3A8A] border-[#BFDBFE]";
+            langBtnText.innerText = '🀄 输出: 中文';
+        } else {
+            langBtn.className = "px-2.5 py-1.5 rounded-lg border text-xs font-medium font-sans flex items-center gap-1.5 transition bg-[#F3EFE9] text-[#524E48] border-[#E0DBD0]";
+            langBtnText.innerText = '🌐 输出: EN';
+        }
+    }
 }
 
 async function toggleSetting(key) {
@@ -248,6 +280,26 @@ async function toggleSetting(key) {
         }
     } catch (e) {
         showToast("❌ 更新设置失败");
+    }
+}
+
+async function toggleLanguage() {
+    const current = (appConfig.settings && appConfig.settings['content_language']) || 'en';
+    const newLang = current === 'en' ? 'zh' : 'en';
+    try {
+        const res = await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: 'content_language', value: newLang })
+        });
+        const data = await res.json();
+        if (data.ok) {
+            appConfig.settings = data.settings;
+            renderHeaderSettings();
+            showToast(newLang === 'zh' ? '🀄 AI 二创输出语言已切换为【简体中文】，下次二创生效' : '🌐 AI output language switched to [English], effective on next synthesis');
+        }
+    } catch (e) {
+        showToast("❌ 语言切换失败");
     }
 }
 
@@ -286,10 +338,40 @@ async function loadConfig() {
                     rTitle.innerText = "Reddit 处于公开匿名模式 (海外 VPS 需配置凭据防 403)";
                 }
             }
+            // 今日发帖节奏面板
+            updateRhythmBar();
         }
     } catch (e) {
         console.warn("Config load failed", e);
     }
+}
+
+async function updateRhythmBar() {
+    try {
+        // 获取今日已发布数量
+        const res = await fetch('/api/drafts?category=ALL&status=published&limit=200');
+        if (!res.ok) return;
+        const published = await res.json();
+        const today = new Date().toISOString().slice(0, 10);
+        const todayCount = published.filter(d => (d.created_at || '').startsWith(today)).length;
+        const el = document.getElementById('todayPublished');
+        if (el) el.innerText = todayCount;
+
+        // 发布节奏面板始终显示
+        const bar = document.getElementById('rhythmBar');
+        if (bar) { bar.classList.remove('hidden'); bar.classList.add('flex'); }
+
+        // Hook 偏好分析
+        const prefs = appConfig.hook_prefs || {};
+        const total = (prefs.hook_1||0) + (prefs.hook_2||0) + (prefs.hook_3||0);
+        const badge = document.getElementById('hookPrefBadge');
+        if (badge && total >= 5) {
+            const maxIdx = ['hook_1','hook_2','hook_3'].reduce((a,b) => (prefs[a]||0) > (prefs[b]||0) ? a : b);
+            const labels = { hook_1: '反共识冲击型', hook_2: '商业经济学型', hook_3: '从业者实录型' };
+            badge.innerText = `🎯 你的黄金 Hook 偏好: ${labels[maxIdx]} (${prefs[maxIdx]}/${total} 次)`;
+            badge.classList.remove('hidden');
+        }
+    } catch(e) { /* 静默 */ }
 }
 
 async function logout() {
@@ -668,7 +750,28 @@ ${item.selftext || item.title || '（该项目为开源代码库或短贴，点�
                         </div>
                     </div>
 
-                    <!-- 杀手锏：大V评论区狙击 (Reply Sniper) -->
+                    <!-- 推文串 (Thread) 展开工具 -->
+                    ${(() => {
+                        const threads = item.thread_posts || [];
+                        if (!threads || threads.length === 0) return '';
+                        const threadHtml = threads.map((t, i) => `
+                            <div class="bg-[#F5F1EA] border border-[#E5DFD4] rounded-lg p-3 text-xs text-[#2B2823] leading-relaxed font-sans select-text relative">
+                                <span class="absolute top-2 right-2 text-[10px] font-mono text-[#8C867D]">${i+1}/${threads.length} · ${t.length}字符</span>
+                                <div class="pr-10">${t}</div>
+                                <button onclick="navigator.clipboard.writeText(${JSON.stringify(t)});showToast('📋 已复制第${i+1}段推文串')" class="mt-1.5 text-[10px] text-[#CC5A2B] hover:underline">复制</button>
+                            </div>
+                        `).join('');
+                        return `
+                        <div class="bg-[#FDFBF7] border border-[#EBE4D8] rounded-xl p-4 space-y-2 shadow-xs">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-xs font-mono text-[#553C9A] font-semibold">🧵 推文串 Thread (${threads.length}条 · 点击分别复制逐条发布)</span>
+                                <button onclick="copyAllThreads()" class="text-xs bg-[#F3EFE9] hover:bg-[#EAE4D9] text-[#3D3933] px-2.5 py-1 rounded border border-[#E0DBD0] font-sans">复制全部</button>
+                            </div>
+                            ${threadHtml}
+                        </div>`;
+                    })()}
+
+                    <!-- 大V评论区狙击 (Reply Sniper) -->
                     <div class="bg-[#FDFBF7] border border-[#EBE4D8] rounded-xl p-4 space-y-3 shadow-xs">
                         <div class="flex items-center justify-between">
                             <span class="text-xs font-mono text-[#B45309] font-semibold">🎯 冲刺500粉截流武器库 (Reply Sniper)</span>
@@ -679,6 +782,14 @@ ${item.selftext || item.title || '（该项目为开源代码库或短贴，点�
                             <span class="text-[#7A746B] font-mono">X搜索指令: <code class="bg-[#F0EBE1] text-[#9A3412] px-1.5 py-0.5 rounded border border-[#E2DBD0] select-all">${item.x_search_query || ''}</code></span>
                             <button onclick="triggerXSearch()" class="bg-[#FFF7ED] text-[#C2410C] hover:bg-[#FFEDD5] border border-[#FDBA74] px-3 py-1 rounded font-medium whitespace-nowrap transition">🔍 一键去 X 找大V贴截流 ↗</button>
                         </div>
+                        ${(() => {
+                            const tags = item.hashtags || [];
+                            if (!tags || tags.length === 0) return '';
+                            return `<div class="pt-2 flex items-center gap-2 flex-wrap">
+                                <span class="text-[10px] font-mono text-[#7A746B] uppercase">🏷️ 精准标签:</span>
+                                ${tags.map(t => `<button onclick="navigator.clipboard.writeText(${JSON.stringify(t)});showToast('已复制 ${t.replace(/'/g,"\\'")}');" class="px-2 py-0.5 bg-[#EEF2FF] text-[#4338CA] border border-[#E0E7FF] rounded text-xs font-mono hover:bg-[#E0E7FF] transition">${t}</button>`).join('')}
+                            </div>`;
+                        })()}
                     </div>
                 </div>
 
@@ -689,6 +800,7 @@ ${item.selftext || item.title || '（该项目为开源代码库或短贴，点�
                         <div class="flex gap-2">
                             <button onclick="copyCardAsImage()" class="bg-[#386641] hover:bg-[#2F5236] text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow-sm transition">🖼️ 复制图片</button>
                             <button onclick="downloadCardPng()" class="bg-[#F0EBE1] hover:bg-[#E7E0D2] text-[#3D3933] text-xs px-2.5 py-1.5 rounded-lg border border-[#DDD6C8] transition">⬇️ 下载 PNG</button>
+                            <a href="/api/drafts/${item.post_id}/card.png" download="alpha_card_${item.post_id.slice(0,10)}.png" class="bg-[#EEF2FF] hover:bg-[#E0E7FF] text-[#4338CA] text-xs px-2.5 py-1.5 rounded-lg border border-[#C7D2FE] transition flex items-center gap-1">🎨 精品暗黑卡</a>
                         </div>
                     </div>
 
@@ -760,6 +872,12 @@ function switchHook(idx) {
         updateCount();
     }
     renderHookOptions();
+    // 记录 Hook 选择用于偏好统计
+    fetch('/api/hook_selected', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hook_index: idx })
+    }).catch(() => {});
 }
 
 function switchFormat(fmt) {
@@ -796,6 +914,15 @@ function updateCount() {
     const words = text.trim().split(/\s+/).filter(Boolean).length;
     const el = document.getElementById('wordCount');
     if (el) el.innerText = `${words} 词 / ${text.length} 字符`;
+}
+
+function copyAllThreads() {
+    const item = drafts.find(d => d.post_id === currentId);
+    if (!item) return;
+    const threads = item.thread_posts || item.thread || [];
+    if (!threads.length) return;
+    navigator.clipboard.writeText(threads.join('\n\n---\n\n'));
+    showToast(`🧵 已复制全部 ${threads.length} 段推文串！`);
 }
 
 function copyFullPost() {
