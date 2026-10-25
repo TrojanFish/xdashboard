@@ -7,6 +7,7 @@ class Settings:
     PORT: int = int(os.getenv("PORT", "28828"))
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     STUDIO_PASSWORD: str = os.getenv("STUDIO_PASSWORD", "admin123")
+    COOKIE_SECURE: bool = os.getenv("COOKIE_SECURE", "0").lower() in ("1", "true", "yes")
     X_HANDLE: str = os.getenv("X_HANDLE", "@YourXHandle")
     DB_PATH: str = os.getenv("DB_PATH", "/workspace/data/studio.db" if os.path.exists("/workspace") else "data/studio.db")
     SCAN_INTERVAL_MINUTES: int = int(os.getenv("SCAN_INTERVAL_MINUTES", "30"))
@@ -23,3 +24,7 @@ class Settings:
     USER_AGENT: str = os.getenv("REDDIT_USER_AGENT", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
 
 settings = Settings()
+
+if settings.STUDIO_PASSWORD in ("admin123", "change_me_to_strong_password", ""):
+    print("[安全提示] 检测到 STUDIO_PASSWORD 使用了默认弱口令，请在生产环境部署时于 .env 中配置高强度密码以防未授权访问。")
+

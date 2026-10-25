@@ -104,6 +104,7 @@ def login(payload: LoginRequest, response: Response):
         value=token,
         httponly=True,
         samesite="lax",
+        secure=settings.COOKIE_SECURE,
         max_age=SESSION_MAX_AGE,
     )
     return {"ok": True, "message": "登录成功"}
@@ -145,7 +146,7 @@ def get_rss_feed(request: Request):
         SELECT d.*, r.title as raw_title, r.permalink as raw_link, r.category as raw_category, r.subreddit
         FROM drafts d
         JOIN raw_signals r ON d.post_id = r.post_id
-        WHERE d.worth_posting = 1 AND (d.status = 'published' OR d.status = 'pending')
+        WHERE d.worth_posting = 1 AND d.status = 'published'
         ORDER BY d.created_at DESC LIMIT 50
     """
     rows = conn.execute(query).fetchall()
@@ -233,7 +234,7 @@ def update_setting(payload: SettingUpdate, username: str = Depends(verify_creden
 
 
 @app.get("/api/drafts")
-def get_drafts(category: str = "ALL", status: str = "all_active", username: str = Depends(verify_credentials)):
+def get_drafts(category: str = "ALL", status: str = "all_active", limit: int = 100, offset: int = 0, username: str = Depends(verify_credentials)):
     conn = get_conn()
     query = """
         SELECT d.*, r.subreddit, r.title, r.permalink, r.score, r.num_comments, r.velocity, r.controversy, r.category
@@ -255,7 +256,8 @@ def get_drafts(category: str = "ALL", status: str = "all_active", username: str 
         query += " AND d.status = ?"
         params.append(status)
 
-    query += " ORDER BY d.created_at DESC LIMIT 100"
+    query += " ORDER BY d.created_at DESC LIMIT ? OFFSET ?"
+    params.extend([limit, offset])
     rows = conn.execute(query, params).fetchall()
     conn.close()
 

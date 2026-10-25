@@ -1,10 +1,11 @@
 import html
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import requests
-from app.database import is_signal_processed
+from app.database import is_signal_processed, get_processed_signal_ids
 
 # 赛道关键词特征匹配库
 AI_DEV_KEYWORDS = {
@@ -64,6 +65,7 @@ class HackerNewsIngestor:
         print("   [Hacker News] 正在从 YC Hacker News 获取全球热门深度技术与宏观讨论...")
         candidates = []
         now_ts = datetime.now(timezone.utc).timestamp()
+        processed_ids = get_processed_signal_ids()
 
         try:
             # 抓取 Top Stories 前 40 个 ID
@@ -75,7 +77,7 @@ class HackerNewsIngestor:
             story_ids = resp.json()[:40]
             for s_id in story_ids:
                 post_id = f"hn_{s_id}"
-                if is_signal_processed(post_id):
+                if post_id in processed_ids:
                     continue
 
                 try:
@@ -138,26 +140,35 @@ class HackerNewsIngestor:
         print(f"   [Hacker News] 成功筛选出 {len(selected_signals)} 条高信噪比技术与资本议题。")
         return selected_signals
 
+    def _fetch_single_comment(self, k_id: int) -> Optional[str]:
+        try:
+            c_resp = self.session.get(f"{self.BASE_URL}/item/{k_id}.json", timeout=5)
+            if c_resp.status_code != 200:
+                return None
+            c_data = c_resp.json() or {}
+            if c_data.get("deleted") or c_data.get("dead"):
+                return None
+
+            body = self._clean_html(c_data.get("text", ""))
+            by = c_data.get("by", "engineer")
+            if len(body) >= 30:
+                return f"[@{by} 推演] {body[:550]}"
+        except Exception:
+            pass
+        return None
+
     def fetch_top_comments(self, kid_ids: List[int], limit: int = 8) -> List[str]:
-        comments = []
         if not kid_ids:
-            return comments
+            return []
 
-        for k_id in kid_ids[:limit * 2]:
-            try:
-                c_resp = self.session.get(f"{self.BASE_URL}/item/{k_id}.json", timeout=5)
-                if c_resp.status_code != 200:
-                    continue
-                c_data = c_resp.json() or {}
-                if c_data.get("deleted") or c_data.get("dead"):
-                    continue
-
-                body = self._clean_html(c_data.get("text", ""))
-                by = c_data.get("by", "engineer")
-                if len(body) >= 30:
-                    comments.append(f"[@{by} 推演] {body[:550]}")
-                if len(comments) >= limit:
-                    break
-            except Exception:
-                continue
+        target_ids = kid_ids[:limit * 2]
+        comments = []
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            future_to_id = {executor.submit(self._fetch_single_comment, k_id): k_id for k_id in target_ids}
+            for fut in as_completed(future_to_id):
+                res = fut.result()
+                if res:
+                    comments.append(res)
+                    if len(comments) >= limit:
+                        break
         return comments

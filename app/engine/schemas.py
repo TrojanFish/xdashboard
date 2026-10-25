@@ -14,25 +14,25 @@ class CardMetric(BaseModel):
 
 
 class SynthesizedDraft(BaseModel):
-    is_worth_posting: bool
-    skip_reason: str
+    is_worth_posting: bool = True
+    skip_reason: str = ""
     narrative_framework: Literal[
         "Contrarian Reality Check",
         "Bull vs Bear Roundtable",
         "Production Post-Mortem & Economics",
         "Asymmetric Trade Breakdown",
         "Repo Teardown & Production Verdict",
-    ]
+    ] = "Repo Teardown & Production Verdict"
     content_tier: Literal[
         "FLASH_PUNCH",
         "DEBATE_ROUNDTABLE",
         "DEEP_DIVE_MEMO"
-    ] = Field(description="Content tier assessed based on information density: FLASH_PUNCH for fast metrics/breaking tools (60-120 words), DEBATE_ROUNDTABLE for contrarian clashes (150-220 words), DEEP_DIVE_MEMO for architectural analysis (280-400 words).")
-    hook_options: List[str] = Field(description="3 high-converting 2-line hooks (pain point attack, data shock, or commercial SaaS alternative thesis)")
-    short_post: str = Field(description="60-120 words punchy short-form body (excluding hook). Zero filler, direct takeaway, high read-through rate.")
-    long_form_body: str = Field(description="250-400 words X Long-form body (excluding hook). Crisp line breaks, bullet points, synthesizing the core architecture, real-world utility, production tradeoffs, and your personal verdict.")
-    reply_sniper_text: str = Field(description="60-90 words ultra-dense insight paragraph designed to reply under big X accounts discussing this topic to steal impressions and gain verified followers.")
-    x_search_query: str = Field(description='Ready-to-use X advanced search query to find recent viral tweets on this topic, e.g.: ("OpenShell" OR "AI runtime") min_faves:30 -filter:replies lang:en')
-    visual_card_title: str = Field(description="Headline for the 16:9 dark mode visual summary card")
-    visual_card_type: Literal["terminal_benchmark", "bull_vs_bear", "capital_impact", "github_repo_card"]
-    visual_card_metrics: List[CardMetric] = Field(description="4 structured items for the visual card grid")
+    ] = Field(default="DEEP_DIVE_MEMO", description="Content tier assessed based on information density: FLASH_PUNCH for fast metrics/breaking tools (60-120 words), DEBATE_ROUNDTABLE for contrarian clashes (150-220 words), DEEP_DIVE_MEMO for architectural analysis (280-400 words).")
+    hook_options: List[str] = Field(default_factory=list, description="3 high-converting 2-line hooks (pain point attack, data shock, or commercial SaaS alternative thesis)")
+    short_post: str = Field(default="", description="60-120 words punchy short-form body (excluding hook). Zero filler, direct takeaway, high read-through rate.")
+    long_form_body: str = Field(default="", description="250-400 words X Long-form body (excluding hook). Crisp line breaks, bullet points, synthesizing the core architecture, real-world utility, production tradeoffs, and your personal verdict.")
+    reply_sniper_text: str = Field(default="", description="60-90 words ultra-dense insight paragraph designed to reply under big X accounts discussing this topic to steal impressions and gain verified followers.")
+    x_search_query: str = Field(default="", description='Ready-to-use X advanced search query to find recent viral tweets on this topic, e.g.: ("OpenShell" OR "AI runtime") min_faves:30 -filter:replies lang:en')
+    visual_card_title: str = Field(default="", description="Headline for the 16:9 dark mode visual summary card")
+    visual_card_type: Literal["terminal_benchmark", "bull_vs_bear", "capital_impact", "github_repo_card"] = "terminal_benchmark"
+    visual_card_metrics: List[CardMetric] = Field(default_factory=list, description="4 structured items for the visual card grid")

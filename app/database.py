@@ -210,6 +210,18 @@ def get_raw_signal(post_id: str) -> Optional[Dict[str, Any]]:
     return d
 
 
+def get_processed_signal_ids() -> set:
+    """批量获取已入库的情报 ID 集合，用于采集器快速去重（避免 N+1 频繁连接数据库）"""
+    conn = get_conn()
+    try:
+        rows = conn.execute("SELECT post_id FROM raw_signals").fetchall()
+        conn.close()
+        return {r["post_id"] for r in rows}
+    except Exception:
+        conn.close()
+        return set()
+
+
 def is_signal_processed(post_id: str) -> bool:
     conn = get_conn()
     try:

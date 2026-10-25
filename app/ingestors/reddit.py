@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 import requests
 from app.config import settings
-from app.database import get_conn, is_signal_processed
+from app.database import get_conn, is_signal_processed, get_processed_signal_ids
 
 
 class RedditIngestor:
@@ -67,6 +67,7 @@ class RedditIngestor:
         candidates = []
         now_ts = datetime.now(timezone.utc).timestamp()
         consecutive_403 = 0
+        processed_ids = get_processed_signal_ids()
 
         for src in sources:
             if consecutive_403 >= 3:
@@ -99,7 +100,7 @@ class RedditIngestor:
                     for item in children:
                         p = item.get("data", {})
                         post_id = p.get("id")
-                        if not post_id or p.get("stickied") or is_signal_processed(post_id):
+                        if not post_id or p.get("stickied") or (post_id in processed_ids):
                             continue
 
                         score = p.get("score", 0)

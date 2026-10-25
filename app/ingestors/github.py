@@ -3,7 +3,7 @@ import time
 from typing import List, Dict, Any
 import requests
 from app.config import settings
-from app.database import is_signal_processed
+from app.database import is_signal_processed, get_processed_signal_ids
 
 
 class GitHubTrendingIngestor:
@@ -39,6 +39,7 @@ class GitHubTrendingIngestor:
 
         candidates = []
         seen_repos = set()
+        processed_ids = get_processed_signal_ids()
 
         for lang in languages:
             url = f"https://github.com/trending/{lang}?since=daily" if lang else "https://github.com/trending?since=daily"
@@ -59,7 +60,7 @@ class GitHubTrendingIngestor:
                         continue
 
                     post_id = f"gh_{repo.replace('/', '_')}"
-                    if is_signal_processed(post_id):
+                    if post_id in processed_ids:
                         continue
 
                     # 提取简介

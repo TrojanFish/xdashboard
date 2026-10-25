@@ -186,5 +186,5 @@ def start_background_scheduler() -> BackgroundScheduler:
         replace_existing=True,
     )
     scheduler.start()
-    print(f"⏱️ 后台定时巡航已启动：每 {settings.SCAN_INTERVAL_MINUTES} 分钟自动抓取一次（GitHub Trending + Reddit）。")
+    print(f"⏱️ 后台定时巡航已启动：每 {settings.SCAN_INTERVAL_MINUTES} 分钟自动抓取一次（GitHub Trending + Hacker News + Reddit）。")
     return scheduler
