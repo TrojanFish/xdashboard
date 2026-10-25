@@ -42,6 +42,10 @@ class TelegramClient:
         """获取机器人自身信息，用于连接连通性校验"""
         return self._post("getMe", timeout=10)
 
+    def set_my_commands(self, commands: List[Dict[str, str]]) -> Optional[Dict[str, Any]]:
+        """设置机器人的官方原生指令菜单 (点击输入框左侧的 [/] 或 Menu 即可弹出快捷菜单)"""
+        return self._post("setMyCommands", data={"commands": commands})
+
     def send_message(
         self,
         chat_id: str | int,

@@ -95,7 +95,7 @@ def init_db():
         )
     """)
     default_settings = [
-        ("auto_synthesize", "1"),    # 1: 抓取后自动二创 (全自动); 0: 仅抓取原始情报，待用户手动挑选二创 (省 Token)
+        ("auto_synthesize", "0"),    # 0: 仅抓取原始情报，待用户手动挑选二创 (省 Token / 默认推荐); 1: 抓取后自动二创
         ("auto_scan_enabled", "1"),  # 1: 开启后台定时巡航; 0: 暂停后台自动巡航 (仅允许手动点击扫描)
     ]
     c.executemany("INSERT OR IGNORE INTO system_settings (key, value) VALUES (?, ?)", default_settings)

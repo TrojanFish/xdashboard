@@ -19,6 +19,8 @@ def format_signal_card(draft: Dict[str, Any], raw_sig: Dict[str, Any]) -> str:
     score = raw_sig.get("score", 0)
     velocity = raw_sig.get("velocity", 0.0)
     controversy = raw_sig.get("controversy", 0.0)
+    status = draft.get("status", "pending")
+    is_raw = (status == "raw_unprocessed")
 
     # 草稿二创属性
     framework = draft.get("narrative_framework", "Deep Dive")
@@ -37,6 +39,20 @@ def format_signal_card(draft: Dict[str, Any], raw_sig: Dict[str, Any]) -> str:
     else:
         source_badge = f"👾 <b>[r/{escape(subreddit)}]</b>"
         metrics_line = f"▲ <b>Score</b>: {score} | 💬 <b>Comments</b>: {raw_sig.get('num_comments', 0)} | ⚡ <b>Vel</b>: {velocity}/m"
+
+    if is_raw:
+        lines = [
+            f"{source_badge} {escape(title)}",
+            "━━━━━━━━━━━━━━━━━━━━",
+            f"🏷️ <b>赛道</b>: <code>{escape(category)}</code> | <b>状态</b>: ⏳ 待手动二创 (省 Token 模式)",
+            metrics_line,
+            "",
+            "<b>【原始线索提示】</b>",
+            f"<i>{escape(short_post or '新捕获高信噪比线索，尚未消耗 AI Token。点击下方 [🤖 立即 AI 二创] 启动深度合成。')}</i>",
+            "",
+            f"🔗 <a href=\"{escape(permalink)}\">查看原帖讨论 ↗</a>"
+        ]
+        return "\n".join(lines)
 
     lines = [
         f"{source_badge} {escape(title)}",
@@ -80,8 +96,10 @@ def build_signal_inline_keyboard(post_id: str, long_post: str = "", status: str 
         {"text": "📋 提取长推", "callback_data": f"copy:{post_id}"},
         {"text": "🚀 唤起 X 发帖", "url": x_intent_url},
     ]
+
+    synth_btn_text = "🤖 立即 AI 二创" if status == "raw_unprocessed" else "🤖 AI 重塑"
     row2 = [
-        {"text": "🤖 AI 重塑", "callback_data": f"synth:{post_id}"},
+        {"text": synth_btn_text, "callback_data": f"synth:{post_id}"},
         {"text": "✅ 标为发布", "callback_data": f"pub:{post_id}"},
     ]
     row3 = [
@@ -98,6 +116,18 @@ def build_signal_inline_keyboard(post_id: str, long_post: str = "", status: str 
     buttons.append(row3)
 
     return {"inline_keyboard": buttons}
+
+
+def build_main_menu_keyboard() -> Dict[str, Any]:
+    """生成手机端底部常驻快捷操作面板 (点击即可触发，彻底告别手动打字输入指令)"""
+    return {
+        "keyboard": [
+            [{"text": "⚡ 立即全网扫描"}, {"text": "📊 系统运行状态"}],
+            [{"text": "⚙️ 切换二创模式"}, {"text": "📖 操作使用指南"}]
+        ],
+        "resize_keyboard": True,
+        "is_persistent": True
+    }
 
 
 def format_channel_post(draft: Dict[str, Any], raw_sig: Dict[str, Any]) -> str:
@@ -137,12 +167,15 @@ def format_status_message(stats: Dict[str, Any]) -> str:
 
 def format_help_message() -> str:
     """机器人帮助说明"""
-    return """🕹️ <b>Alpha Studio 指令与操作指南</b>
+    return """🕹️ <b>Personal Alpha Studio 移动操作指南</b>
 ━━━━━━━━━━━━━━━━━━━━
-/scan - 🚀 手机端随时远程点火，触发全网实时情报扫描
-/status - 📊 查看 VPS 运行状态、库藏草稿与采集数据统计
-/auto - ⚡ 一键切换「全自动二创」与「省 Token / 仅抓取」模式
-/help - 📖 显示操作说明
+💡 <b>免输入极速交互</b>：
+无需手动打字！直接点击屏幕底部的<b>【快捷操作面板】</b>或输入框左侧的 <b>【Menu 菜单】</b>即可一键操作：
 
-💡 <b>移动端外链投喂</b>:
-直接将任何 GitHub 仓库、推文或技术文章链接发送给本机器人，AI 将自动解析提炼并生成草稿入库！"""
+• <b>[⚡ 立即全网扫描]</b>：随时远程点火，抓取最新全球热点
+• <b>[📊 系统运行状态]</b>：查看今日采集、待办草稿与巡航状态
+• <b>[⚙️ 切换二创模式]</b>：随时切换「省 Token 模式」与「全自动模式」
+• <b>[📖 操作使用指南]</b>：查看本帮助与说明
+
+📥 <b>移动端外链投喂 (Drop-in Curation)</b>：
+手机上刷到任何有价值的 GitHub 项目链接或技术文章，直接转发/发送给机器人，AI 自动提取关键逻辑并二创入库！"""

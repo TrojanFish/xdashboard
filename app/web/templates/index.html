@@ -170,7 +170,7 @@ let filters = { category: 'ALL', status: 'all_active' };
 let appConfig = { 
     x_handle: '@YourHandle', 
     has_gemini_key: true,
-    settings: { auto_synthesize: '1', auto_scan_enabled: '1' }
+    settings: { auto_synthesize: '0', auto_scan_enabled: '1' }
 };
 
 function showToast(msg) {
@@ -182,7 +182,7 @@ function showToast(msg) {
 
 function renderHeaderSettings() {
     const s = appConfig.settings || {};
-    const autoSynth = s.auto_synthesize !== '0';
+    const autoSynth = s.auto_synthesize === '1';
     const autoScan = s.auto_scan_enabled !== '0';
 
     const synthBtn = document.getElementById('autoSynthBtn');
@@ -777,7 +777,7 @@ let scanPollInterval = null;
 
 async function triggerScan() {
     const btn = document.getElementById('scanBtn');
-    const autoSynth = (appConfig.settings && appConfig.settings.auto_synthesize) !== '0';
+    const autoSynth = (appConfig.settings && appConfig.settings.auto_synthesize) === '1';
 
     // 仅在开启了自动二创时才强制要求 Gemini API Key
     if (autoSynth && !appConfig.has_gemini_key) {

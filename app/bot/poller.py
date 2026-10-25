@@ -15,6 +15,7 @@ from app.bot.client import TelegramClient
 from app.bot.formatter import (
     format_signal_card,
     build_signal_inline_keyboard,
+    build_main_menu_keyboard,
     format_status_message,
     format_help_message,
     escape
@@ -58,6 +59,13 @@ class BotPoller:
         if me and me.get("ok"):
             bot_username = me.get("result", {}).get("username", "UnknownBot")
             print(f"🤖 [Telegram Bot] 验证连接成功: @{bot_username}")
+            # 自动注册官方客户端原生菜单栏按钮 (输入框左侧 [/] Menu)
+            self.client.set_my_commands([
+                {"command": "scan", "description": "⚡ 立即触发全网情报扫描"},
+                {"command": "status", "description": "📊 查看系统运行状态与库藏"},
+                {"command": "auto", "description": "⚙️ 切换二创模式 (全自动/省Token)"},
+                {"command": "help", "description": "📖 使用指南与投喂说明"}
+            ])
         else:
             print("⚠️ [Telegram Bot] 连通性测试未返回成功，可能网络受限或 Token 有误，将继续尝试长轮询...")
 
@@ -96,21 +104,24 @@ class BotPoller:
         if not text:
             return
 
-        # 1. 基础系统指令路由
-        if text.startswith("/"):
-            cmd = text.split()[0].lower().split("@")[0]
-            if cmd == "/start":
-                self._cmd_start(chat_id)
-            elif cmd == "/scan":
-                self._cmd_scan(chat_id)
-            elif cmd == "/status":
-                self._cmd_status(chat_id)
-            elif cmd == "/auto":
-                self._cmd_toggle_auto(chat_id)
-            elif cmd == "/help":
-                self.client.send_message(chat_id, format_help_message())
-            else:
-                self.client.send_message(chat_id, "未知指令，输入 /help 查看支持的操作。")
+        # 1. 匹配快捷菜单按钮或指令 (支持手点常驻按钮与指令输入)
+        if text in ("/scan", "⚡ 立即全网扫描", "立即全网扫描", "扫描"):
+            self._cmd_scan(chat_id)
+            return
+        elif text in ("/status", "📊 系统运行状态", "系统运行状态", "状态"):
+            self._cmd_status(chat_id)
+            return
+        elif text in ("/auto", "⚙️ 切换二创模式", "切换二创模式", "二创模式"):
+            self._cmd_toggle_auto(chat_id)
+            return
+        elif text in ("/help", "📖 操作使用指南", "📖 使用指南与帮助", "使用指南", "帮助"):
+            self.client.send_message(chat_id, format_help_message(), reply_markup=build_main_menu_keyboard())
+            return
+        elif text == "/start":
+            self._cmd_start(chat_id)
+            return
+        elif text.startswith("/"):
+            self.client.send_message(chat_id, "未知指令，请直接点击下方操作面板或输入 /help 查看支持的操作。", reply_markup=build_main_menu_keyboard())
             return
 
         # 2. 移动端 URL 智能投喂二创 (Drop-in Curation)
@@ -120,7 +131,8 @@ class BotPoller:
         else:
             self.client.send_message(
                 chat_id,
-                "💡 发送 URL（如 GitHub 项目链接或技术文章），AI 将自动解析并提炼二创；或输入 /help 查看指令。"
+                "💡 请点击下方操作面板快捷控制，或直接发送 URL 链接（如 GitHub 仓库或技术长文），AI 将自动解析二创。",
+                reply_markup=build_main_menu_keyboard()
             )
 
     def _cmd_start(self, chat_id: int | str):
@@ -129,17 +141,18 @@ class BotPoller:
 您已成功连接本专属机器人。
 所有扫描捕获的高信噪比情报将实时推送到此处，支持一键长推提取、发帖唤起与快捷归档。
 
-输入 /help 查看所有控制指令，或输入 /scan 立即触发全网扫描。"""
-        self.client.send_message(chat_id, welcome)
+💡 <b>快捷操作提示</b>：
+下方已为您挂载<b>常驻操作面板</b>与左下角 <b>Menu 菜单</b>，直接点击按钮即可一键下发指令，彻底告别手动打字！"""
+        self.client.send_message(chat_id, welcome, reply_markup=build_main_menu_keyboard())
 
     def _cmd_scan(self, chat_id: int | str):
         from app.scheduler import execute_radar_cycle, get_scan_state
         state = get_scan_state()
         if state.get("running"):
-            self.client.send_message(chat_id, "⚠️ 当前已有扫描流水线正在运行中，请等待其执行完毕...")
+            self.client.send_message(chat_id, "⚠️ 当前已有全网扫描流水线正在运行中，请等待其执行完毕...", reply_markup=build_main_menu_keyboard())
             return
 
-        self.client.send_message(chat_id, "🚀 <b>已远程触发全网扫描！</b>\n正在探测 GitHub Trending + Hacker News + Reddit，捕获优质线索后将自动推送到此处...")
+        self.client.send_message(chat_id, "🚀 <b>已远程触发全网扫描！</b>\n正在探测 GitHub Trending + Hacker News + Reddit，捕获优质线索后将自动推送到此处...", reply_markup=build_main_menu_keyboard())
         # 后台异步启动扫描
         threading.Thread(target=execute_radar_cycle, name="RemoteScanTask", daemon=True).start()
 
@@ -152,14 +165,14 @@ class BotPoller:
         archived_drafts = conn.execute("SELECT COUNT(*) FROM drafts WHERE status = 'archived'").fetchone()[0]
         conn.close()
 
-        auto_synth = get_setting("auto_synthesize", "1") == "1"
+        auto_synth = get_setting("auto_synthesize", "0") == "1"
         auto_scan = get_setting("auto_scan_enabled", "1") == "1"
         scan_state = get_scan_state()
 
         stats = {
             "scan_interval": settings.SCAN_INTERVAL_MINUTES,
             "auto_scan_text": "已开启" if auto_scan else "已暂停",
-            "auto_synth_text": "🤖 全自动二创" if auto_synth else "⏳ 仅抓取 (省 Token)",
+            "auto_synth_text": "🤖 全自动二创" if auto_synth else "⏳ 仅抓取 (省 Token 模式)",
             "synthesis_model": settings.SYNTHESIS_MODEL,
             "total_raw": total_raw,
             "pending_drafts": pending_drafts,
@@ -167,14 +180,17 @@ class BotPoller:
             "archived_drafts": archived_drafts,
             "last_scan": scan_state.get("last_completed_at") or scan_state.get("message")
         }
-        self.client.send_message(chat_id, format_status_message(stats))
+        self.client.send_message(chat_id, format_status_message(stats), reply_markup=build_main_menu_keyboard())
 
     def _cmd_toggle_auto(self, chat_id: int | str):
-        current = get_setting("auto_synthesize", "1") == "1"
+        current = get_setting("auto_synthesize", "0") == "1"
         new_val = "0" if current else "1"
         set_setting("auto_synthesize", new_val)
-        mode_text = "🤖 全自动 AI 二创模式" if new_val == "1" else "⏳ 节省 Token 模式 (仅抓取原始情报)"
-        self.client.send_message(chat_id, f"✅ 已切换系统模式为: <b>{mode_text}</b>")
+        if new_val == "1":
+            mode_text = "🤖 全自动 AI 二创模式 (扫描到线索后自动调用 Gemini 产出完整草稿)"
+        else:
+            mode_text = "⏳ 节省 Token 模式 (默认推荐：仅抓取原始情报，待您在手机或网页手动点击 [立即二创] 深度加工)"
+        self.client.send_message(chat_id, f"✅ 已切换系统模式为: <b>{mode_text}</b>", reply_markup=build_main_menu_keyboard())
 
     def _handle_url_curation(self, chat_id: int | str, url: str):
         """解析外链并调用 AI 生成双格式草稿与卡片"""

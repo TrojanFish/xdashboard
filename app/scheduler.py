@@ -29,7 +29,7 @@ def get_scan_state() -> dict:
 
 
 def execute_radar_cycle():
-    auto_synthesize = (get_setting("auto_synthesize", "1") == "1")
+    auto_synthesize = (get_setting("auto_synthesize", "0") == "1")
 
     # 如果开启了自动二创，则必须校验 Gemini Key；如果处于手动省 Token 模式，仅需抓取
     if auto_synthesize:

@@ -347,7 +347,7 @@ def synthesize_post(post_id: str, username: str = Depends(verify_credentials)):
 @app.post("/api/scan")
 def trigger_scan(background_tasks: BackgroundTasks, username: str = Depends(verify_credentials)):
     """使用 FastAPI 原生 BackgroundTasks 异步执行，带密钥检测与防重复并发保护"""
-    auto_synthesize = (get_setting("auto_synthesize", "1") == "1")
+    auto_synthesize = (get_setting("auto_synthesize", "0") == "1")
     if auto_synthesize and (not settings.GEMINI_API_KEY or settings.GEMINI_API_KEY == "your_gemini_api_key_here"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
