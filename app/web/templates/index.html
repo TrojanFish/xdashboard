@@ -37,15 +37,15 @@
     </div>
 
     <!-- 顶部导航栏 (Claude 暖色纸质雅致风) -->
-    <header class="h-14 border-b border-[#E8E2D8] bg-[#FFFFFF] px-6 flex items-center justify-between shrink-0 shadow-sm">
-        <div class="flex items-center gap-3">
+    <header class="h-14 border-b border-[#E8E2D8] bg-[#FFFFFF] px-4 sm:px-6 flex items-center justify-between shrink-0 shadow-sm gap-2">
+        <div class="flex items-center gap-2 sm:gap-3 shrink-0">
             <span class="w-2.5 h-2.5 rounded-full bg-[#386641] animate-pulse"></span>
-            <h1 class="font-bold text-base tracking-tight text-[#201E1C] font-sans">
+            <h1 class="font-bold text-sm sm:text-base tracking-tight text-[#201E1C] font-sans">
                 PERSONAL ALPHA STUDIO 
-                <span class="text-xs font-normal text-[#757067] ml-2 font-mono">GitHub Trending + Hacker News + Reddit → X Alpha</span>
+                <span class="hidden 2xl:inline text-xs font-normal text-[#757067] ml-2 font-mono">GitHub Trending + Hacker News + Reddit → X Alpha</span>
             </h1>
         </div>
-        <div class="flex items-center gap-2.5">
+        <div class="flex items-center gap-1.5 sm:gap-2.5 overflow-x-auto py-1">
             <!-- 赛道筛选 -->
             <div class="flex bg-[#F3EFE9] p-1 rounded-lg border border-[#E3DDD2] text-xs font-sans">
                 <button onclick="setFilter('category', 'ALL')" id="cat-ALL" class="px-2.5 py-1 rounded-md bg-[#FFFFFF] text-[#201E1C] font-medium shadow-sm">全部赛道</button>
@@ -508,18 +508,22 @@ ${item.selftext || item.title || '（该项目为开源代码库或短贴，点�
         </div>
     `).join('');
 
-    const metricsHtml = metrics.map(m => {
+    const metricsHtml = metrics.length > 0 ? metrics.map(m => {
         const dot = m.sentiment === 'positive' ? 'bg-[#2E7D32]' : (m.sentiment === 'negative' ? 'bg-[#C0392B]' : 'bg-[#706B63]');
         const border = m.sentiment === 'positive' ? 'border-[#C4DECA] bg-[#EDF6EE] text-[#1B4D2E]' : (m.sentiment === 'negative' ? 'border-[#F7CCD0] bg-[#FDF0F1] text-[#7A1C24]' : 'border-[#E5DFD4] bg-[#FFFFFF] text-[#2E2B27]');
         return `
         <div class="p-2.5 sm:p-3 rounded-lg border ${border} flex flex-col justify-between shadow-xs">
             <div class="flex items-center gap-1.5 mb-1 shrink-0">
                 <span class="w-2 h-2 rounded-full shrink-0 ${dot}"></span>
-                <span class="text-[10px] sm:text-[11px] font-mono uppercase tracking-wider text-[#757067] font-semibold truncate">${m.label}</span>
+                <span contenteditable="true" title="点击可直接修改指标标签" class="text-[10px] sm:text-[11px] font-mono uppercase tracking-wider text-[#757067] font-semibold truncate outline-none">${m.label}</span>
             </div>
-            <div class="text-xs font-semibold leading-snug font-sans break-words">${m.value}</div>
+            <div contenteditable="true" title="点击可直接修改数值" class="text-xs font-semibold leading-snug font-sans break-words outline-none">${m.value}</div>
         </div>`;
-    }).join('');
+    }).join('') : `
+        <div class="col-span-2 p-3 rounded-lg border border-[#E5DFD4] bg-[#FFFFFF] text-center text-xs text-[#7A746B] font-mono">
+            💡 点击右上角「重新二创」可自动提取 4 项核心数据指标
+        </div>
+    `;
 
     // 格式与等级信息
     const tier = item.content_tier || 'DEEP_DIVE_MEMO';
@@ -732,19 +736,22 @@ function copyText(elId, msg) {
 function openXIntent() {
     const text = document.getElementById('fullTweetBox').value;
     navigator.clipboard.writeText(text);
-    showToast("📋 已复制！正在唤起 X 发帖页...");
+    showToast("📋 已复制全文！切到 X 发帖框直接按 Ctrl+V 粘贴 🚀");
     setTimeout(() => {
         window.open('https://x.com/compose/post', '_blank');
-    }, 300);
+    }, 350);
 }
 
 function triggerXSearch() {
     const item = drafts.find(d => d.post_id === currentId);
-    if (!item || !item.x_search_query) {
-        showToast("⚠️ 当前草稿无有效搜索词");
-        return;
+    if (!item) return;
+    let query = item.x_search_query;
+    if (!query || query.trim() === '') {
+        // 智能兜底：提取核心标题构造成高转化截流搜索词
+        const cleanTitle = (item.title || '').replace(/["']/g, '').split(' - ')[0].trim().slice(0, 36);
+        query = `"${cleanTitle}" min_faves:10 lang:en`;
     }
-    const url = `https://x.com/search?q=${encodeURIComponent(item.x_search_query)}&src=typed_query&f=live`;
+    const url = `https://x.com/search?q=${encodeURIComponent(query)}&src=typed_query&f=live`;
     window.open(url, '_blank');
 }
 
@@ -766,6 +773,12 @@ async function saveEdits() {
     const parts = box.value.split('\n\n');
     const bodyOnly = parts.length > 1 ? parts.slice(1).join('\n\n') : box.value;
 
+    // 同步 Hook 修改：若用户对首段 Hook 进行了手动润色，保存回 hooks 列表并重绘 Hook 选项卡
+    if (parts.length > 1 && item.hooks && item.hooks.length > 0) {
+        item.hooks[selectedHookIdx] = parts[0];
+        renderHookOptions();
+    }
+
     if (currentFormat === 'short') {
         item.short_post = bodyOnly;
     } else {
@@ -779,10 +792,11 @@ async function saveEdits() {
         body: JSON.stringify({ 
             long_post: item.long_post || '', 
             short_post: item.short_post || '', 
-            sniper_reply: sniperReply 
+            sniper_reply: sniperReply,
+            hooks: item.hooks || []
         })
     });
-    showToast("💾 已保存修改");
+    showToast("💾 已保存修改（正文与Hook已同步）");
 }
 
 let scanPollInterval = null;
@@ -849,10 +863,19 @@ async function copyCardAsImage() {
     const card = document.getElementById('visualCardCanvas');
     try {
         const blob = await htmlToImage.toBlob(card, { pixelRatio: 2.5 });
-        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-        showToast("🖼️ 卡片图片已复制！去 X 发帖框 Ctrl+V 粘贴");
+        // 检测剪贴板 API 是否可用且处于安全上下文 (HTTPS 或 Localhost)
+        if (navigator.clipboard && navigator.clipboard.write && window.isSecureContext !== false) {
+            await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+            showToast("🖼️ 卡片图片已复制！去 X 发帖框 Ctrl+V 粘贴");
+            return;
+        }
+        // 非安全上下文(如直接通过 HTTP IP 访问)时，平滑降级自动下载
+        showToast("💡 HTTP 访问受浏览器剪贴板限制，已自动为您下载高清 PNG 卡片！");
+        downloadCardPng();
     } catch (e) {
-        showToast("⚠️ 建议使用旁边的「下载 PNG」按钮");
+        console.warn("Clipboard write failed, fallback to download", e);
+        showToast("💡 剪贴板受保护，已自动为您下载高清 PNG 卡片！");
+        downloadCardPng();
     }
 }
 
@@ -895,8 +918,15 @@ async function toggleSource(id) {
 
 async function addSource(e) {
     e.preventDefault();
+    let rawSub = document.getElementById('newSub').value.trim();
+    // 自动清洗 r/ 或 /r/ 前缀及多余斜杠
+    const cleanSub = rawSub.replace(/^\/?r\//i, '').replace(/\/+$/, '').trim();
+    if (!cleanSub) {
+        alert("请输入有效的社区名称");
+        return;
+    }
     const payload = {
-        subreddit: document.getElementById('newSub').value,
+        subreddit: cleanSub,
         category: document.getElementById('newCat').value,
         min_score: parseInt(document.getElementById('newScore').value) || 30,
         min_velocity: parseFloat(document.getElementById('newVel').value) || 0.4,
@@ -910,7 +940,7 @@ async function addSource(e) {
     if (res.ok) {
         document.getElementById('newSub').value = '';
         openSourcesModal();
-        showToast("✅ 监控源添加成功");
+        showToast("✅ 监控源添加成功: r/" + cleanSub);
     } else {
         const err = await res.json();
         alert(err.detail);

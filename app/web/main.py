@@ -307,17 +307,27 @@ class DraftEdit(BaseModel):
     long_post: str
     short_post: Optional[str] = None
     sniper_reply: str
+    hooks: Optional[list] = None
 
 
 @app.post("/api/drafts/{post_id}/save")
 def save_draft(post_id: str, payload: DraftEdit, username: str = Depends(verify_credentials)):
     conn = get_conn()
+    hooks_json = json.dumps(payload.hooks, ensure_ascii=False) if payload.hooks is not None else None
     if payload.short_post is not None:
-        conn.execute("UPDATE drafts SET long_post = ?, short_post = ?, sniper_reply = ? WHERE post_id = ?",
-                     (payload.long_post, payload.short_post, payload.sniper_reply, post_id))
+        if hooks_json is not None:
+            conn.execute("UPDATE drafts SET long_post = ?, short_post = ?, sniper_reply = ?, hooks_json = ? WHERE post_id = ?",
+                         (payload.long_post, payload.short_post, payload.sniper_reply, hooks_json, post_id))
+        else:
+            conn.execute("UPDATE drafts SET long_post = ?, short_post = ?, sniper_reply = ? WHERE post_id = ?",
+                         (payload.long_post, payload.short_post, payload.sniper_reply, post_id))
     else:
-        conn.execute("UPDATE drafts SET long_post = ?, sniper_reply = ? WHERE post_id = ?",
-                     (payload.long_post, payload.sniper_reply, post_id))
+        if hooks_json is not None:
+            conn.execute("UPDATE drafts SET long_post = ?, sniper_reply = ?, hooks_json = ? WHERE post_id = ?",
+                         (payload.long_post, payload.sniper_reply, hooks_json, post_id))
+        else:
+            conn.execute("UPDATE drafts SET long_post = ?, sniper_reply = ? WHERE post_id = ?",
+                         (payload.long_post, payload.sniper_reply, post_id))
     conn.commit()
     conn.close()
     return {"ok": True}
@@ -387,10 +397,14 @@ class SourceCreate(BaseModel):
 @app.post("/api/sources")
 def add_source(payload: SourceCreate, username: str = Depends(verify_credentials)):
     conn = get_conn()
+    sub = payload.subreddit.strip().lstrip("/").removeprefix("r/").removeprefix("R/").rstrip("/")
+    if not sub:
+        conn.close()
+        raise HTTPException(status_code=400, detail="社区名称不能为空")
     try:
         conn.execute(
             "INSERT INTO watch_sources (subreddit, category, min_score, min_velocity, min_controversy, enabled) VALUES (?, ?, ?, ?, ?, 1)",
-            (payload.subreddit.strip(), payload.category, payload.min_score, payload.min_velocity,
+            (sub, payload.category, payload.min_score, payload.min_velocity,
              payload.min_controversy)
         )
         conn.commit()
