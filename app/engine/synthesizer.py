@@ -70,25 +70,39 @@ class SynthesisEngine:
         raise last_err
 
     def quick_triage(self, signal: Dict[str, Any]) -> TriageResult:
-        """二级漏斗：用极低成本的 Flash 模型拦截纯求助帖、情绪宣泄水贴或低价值项目"""
+        """二级漏斗：严格拦截纯求助帖、散户情绪水帖与平庸玩具项目，只放行高信噪比商业爆款素材"""
         is_github = signal.get("category") == "GITHUB_TRENDING"
         
         if is_github:
             prompt = f"""
-Evaluate if this trending GitHub repository has high technical utility, real-world architecture value, or commercial/dev appeal suitable for an insightful breakdown on X (Twitter).
-Reject if it is an empty toy repo, simple link collection, or spam.
+You are an elite X (Twitter) Tech & Venture Capital Content Director evaluating organic viral and monetization potential.
+Evaluate if this trending GitHub repository has high technical utility, real-world architecture value, or commercial/dev appeal suitable for an insightful breakdown on X.
+
+CRITERIA:
+- PASS if it solves an expensive problem, introduces novel architecture, or challenges commercial SaaS.
+- REJECT if it is an empty toy repo, simple link/awesome collection, homework project, or spam.
 
 Repository: {signal['title']}
-Context & README Excerpt:
+README Excerpt:
 {signal['selftext'][:1000]}
 """
         else:
             prompt = f"""
-Evaluate if this community thread has enough substance, industry alpha, benchmark data, or fascinating debate to be synthesized into a high-performing X post for a Tech & Finance audience.
+You are an elite X (Twitter) Growth Director evaluating organic viral, high-bookmark, and high-CPM impression potential for a senior Tech & Finance audience.
+
+STRICT PASS CRITERIA (Must meet at least one):
+1. Empirical benchmark data, real production post-mortems, or unit economics breakdown.
+2. Fierce practitioner controversy, institutional vs retail divergence, or high bull/bear tension.
+3. Breaking macro, energy/commodity bottleneck (oil, gold, nuclear grid), or major infrastructure inflection.
+
+STRICT REJECT CRITERIA:
+- Beginner "how-to" help questions, basic configuration bugs, simple code help ("how do I install X?").
+- Low-effort emotional rants without hard data or numbers ("I hate this update", "market is rigged").
+- Generic PR marketing fluff or trivial meme jokes.
 
 Subreddit: r/{signal['subreddit']} ({signal['category']})
 Title: {signal['title']}
-Content snippet: {signal['selftext'][:600]}
+Content snippet: {signal['selftext'][:700]}
 """
         try:
             resp = self._generate_with_fallback(prompt, TriageResult, FALLBACK_TRIAGE_MODELS, temperature=0.2)
@@ -166,20 +180,26 @@ Content snippet: {signal['selftext'][:600]}
 - Top Practitioner Comments & Pushback:
 {comments_block}
 
-### EXECUTION RULES (CRITICAL FOR X MONETIZATION & GROWTH)
-1. **CONTENT TIER & DUAL-FORMAT**:
-   - Set `content_tier`:
-     * `FLASH_PUNCH`: Rapid data point, single anomaly or breaking event (best for 60-120 words).
-     * `DEBATE_ROUNDTABLE`: Fierce community clash or bull vs bear dispute (best for 150-220 words).
-     * `DEEP_DIVE_MEMO`: Complex engineering post-mortem or multi-factor capital thesis (best for 280-400 words).
-   - Generate `short_post`: 60-120 words high-density punch for mobile reading.
-   - Generate `long_form_body`: 250-400 words comprehensive breakdown synthesizing main post + top comment pushbacks.
-2. **NO REPOST TRACES**: Never mention "Reddit", "r/{signal['subreddit']}", or "a user posted". Write from first-person insider observation ("Engineers deploying X are hitting a wall...", "The smartest debate around $TICKER right now...").
-3. **BRIDGE AI & CAPITAL**: Even if the topic is pure AI coding, briefly connect it to compute economics, SaaS moats, or capex. Even if it's pure stock trading, dissect it with systematic/engineering rigor.
-4. **REPLY SNIPER + X SEARCH QUERY**:
+### EXECUTION RULES (ENGINEERED FOR VIRAL X ALGORITHM & MONETIZATION)
+1. **THE 3 HOOK OPTIONS (Click-Through & Open-Fold Multiplier)**:
+   - Hook 1 (Counter-Consensus Shock): Violently contrast mainstream consensus against ground reality with empirical proof ("Everyone assumes X, but production telemetry proves Y:").
+   - Hook 2 (Commercial Economics & Dollar Cost): Attack unit economics, hidden costs, or margin erosion ("Stop burning $X/month on... The real compute math is:").
+   - Hook 3 (Practitioner / Trader Post-Mortem): First-person insider observation ("After profiling 5,000 requests on our cluster / After dissecting the latest CFTC positioning data...").
+2. **DUAL-FORMAT DRAFTING**:
+   - `short_post`: Exactly 60-120 words. Ultra-punchy, high-contrast, zero fluff. Optimized for fast mobile consumption.
+   - `long_form_body`: Exactly 250-400 words. Structured with clean '•' bullets, high information density, designed as a "Bookmark Magnet" (30x algorithm weight).
+3. **NO REPOST TRACES**: Never mention "Reddit", "r/{signal['subreddit']}", or "a user posted". Write from first-person insider authority ("Engineers deploying X are hitting a wall...", "The smartest debate around $TICKER right now...").
+4. **CROSS-DOMAIN REALITY CHECK (Your Unique Alpha)**:
+   - When topic is AI/Dev: Always link architecture choices to VRAM, token latency, energy/power draw, and SaaS margins.
+   - When topic is US Stocks/Macro: Apply an engineer's first-principles data mindset to dissect earnings quality, institutional 13F positioning, and asymmetric risk/reward.
+   - When topic is Energy/Commodities (Oil, Gold, Uranium): Directly connect the datacenter power bottleneck (grid capacity, natural gas, uranium SMRs) to AI scaling, and evaluate gold/fiat debasement against tech multiples.
+   - When topic is Crypto: Focus strictly on real protocol revenue, fee cash flow, and on-chain liquidity depth, discarding meme slop.
+5. **THE ENGAGEMENT CLOSER (75x Algorithm Weight - Verified Reply Magnet)**:
+   - End the post with a sharp, polarizing question or controversial tradeoff that forces practitioners and traders to reply in the comments!
+6. **REPLY SNIPER + X SEARCH QUERY**:
    - Craft `reply_sniper_text` (60-90 words) packed with the sharpest counter-intuitive data point from the comments so the user can drop it under big X influencers' posts to farm Verified followers.
-   - Craft `x_search_query` using 1-2 core keywords/tickers from this topic + `min_faves:50 -filter:replies lang:en` so the user can 1-click find viral tweets to reply to right now.
-5. **BANNED AI SLOP WORDS**: Strictly forbidden: {persona['banned_words']}.
+   - Craft `x_search_query` using 1-2 core keywords/tickers from this topic + `min_faves:30 -filter:replies lang:en` so the user can 1-click find viral tweets to reply to right now.
+7. **BANNED AI SLOP WORDS**: Strictly forbidden: {persona['banned_words']}.
 """
 
         resp = self._generate_with_fallback(prompt, SynthesizedDraft, FALLBACK_SYNTHESIS_MODELS, temperature=0.7)

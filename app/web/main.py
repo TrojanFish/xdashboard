@@ -254,6 +254,14 @@ def get_drafts(category: str = "ALL", status: str = "all_active", limit: int = 1
         query += " AND r.subreddit = 'hackernews'"
     elif category == "GITHUB_TRENDING":
         query += " AND r.category = 'GITHUB_TRENDING'"
+    elif category == "AI_DEV":
+        query += " AND r.category = 'AI_DEV'"
+    elif category == "MACRO_STOCKS":
+        query += " AND (r.category = 'MACRO_STOCKS' OR (r.category = 'FINANCE' AND r.subreddit IN ('stocks', 'wallstreetbets', 'investing', 'ValueInvesting', 'options', 'algotrading')))"
+    elif category == "COMMODITIES_ENERGY":
+        query += " AND (r.category = 'COMMODITIES_ENERGY' OR (r.category = 'FINANCE' AND r.subreddit IN ('commodities', 'Gold', 'energy', 'UraniumSqueeze')))"
+    elif category == "CRYPTO_ALPHA":
+        query += " AND (r.category = 'CRYPTO_ALPHA' OR (r.category = 'FINANCE' AND r.subreddit IN ('BitcoinMarkets', 'ethfinance', 'defi')))"
     elif category != "ALL":
         query += " AND r.category = ?"
         params.append(category)

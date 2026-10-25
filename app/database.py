@@ -108,43 +108,60 @@ def init_db():
     if "short_post" not in draft_cols:
         c.execute("ALTER TABLE drafts ADD COLUMN short_post TEXT")
 
-    # 预置默认监控源（使用 INSERT OR IGNORE 保证已有库平滑补全）
+    # 动态平滑迁移：将已有旧版 'FINANCE' 细化归类为清晰的二级赛道
+    c.execute("UPDATE watch_sources SET category = 'MACRO_STOCKS' WHERE subreddit IN ('stocks', 'wallstreetbets', 'investing', 'ValueInvesting', 'options', 'algotrading') AND category = 'FINANCE'")
+    c.execute("UPDATE watch_sources SET category = 'CRYPTO_ALPHA' WHERE subreddit IN ('BitcoinMarkets', 'ethfinance', 'defi') AND category = 'FINANCE'")
+    c.execute("UPDATE raw_signals SET category = 'MACRO_STOCKS' WHERE subreddit IN ('stocks', 'wallstreetbets', 'investing', 'ValueInvesting', 'options', 'algotrading') AND category = 'FINANCE'")
+    c.execute("UPDATE raw_signals SET category = 'CRYPTO_ALPHA' WHERE subreddit IN ('BitcoinMarkets', 'ethfinance', 'defi') AND category = 'FINANCE'")
+
+    # 预置默认监控源（四条核心商业化赛道，保证已有库平滑补全）
     default_sources = [
-        # 1. 深度 AI 与独立开发
+        # 1. 深度 AI 与独立工程生态 (AI_DEV)
         ("LocalLLaMA", "AI_DEV", 25, 0.4, 0.35),
         ("ClaudeAI", "AI_DEV", 25, 0.4, 0.35),
         ("singularity", "AI_DEV", 40, 0.7, 0.40),
         ("SaaS", "AI_DEV", 20, 0.3, 0.40),
         ("ChatGPTCoding", "AI_DEV", 20, 0.3, 0.35),
-        # 2. 华尔街宏观、美股期权与量化
-        ("wallstreetbets", "FINANCE", 60, 0.8, 0.45),
-        ("stocks", "FINANCE", 35, 0.5, 0.40),
-        ("algotrading", "FINANCE", 20, 0.25, 0.35),
-        ("ValueInvesting", "FINANCE", 25, 0.3, 0.35),
-        ("options", "FINANCE", 25, 0.35, 0.40),
-        # 3. 头部纯正加密资本与链上金融（严选高信噪比，坚决剔除土狗与Meme水贴）
-        ("BitcoinMarkets", "FINANCE", 40, 0.45, 0.35),
-        ("ethfinance", "FINANCE", 30, 0.35, 0.35),
-        ("defi", "FINANCE", 25, 0.30, 0.35),
+
+        # 2. 美股异动、华尔街宏观与期权异动 (MACRO_STOCKS)
+        ("stocks", "MACRO_STOCKS", 35, 0.5, 0.40),
+        ("wallstreetbets", "MACRO_STOCKS", 60, 0.8, 0.45),
+        ("investing", "MACRO_STOCKS", 35, 0.45, 0.35),
+        ("options", "MACRO_STOCKS", 25, 0.35, 0.40),
+        ("ValueInvesting", "MACRO_STOCKS", 25, 0.3, 0.35),
+        ("algotrading", "MACRO_STOCKS", 20, 0.25, 0.35),
+
+        # 3. 能源大宗、石油、黄金与清洁核电 (COMMODITIES_ENERGY)
+        ("commodities", "COMMODITIES_ENERGY", 30, 0.35, 0.35),
+        ("Gold", "COMMODITIES_ENERGY", 30, 0.35, 0.35),
+        ("energy", "COMMODITIES_ENERGY", 30, 0.35, 0.35),
+        ("UraniumSqueeze", "COMMODITIES_ENERGY", 35, 0.45, 0.40),
+
+        # 4. 加密资本与链上量化流动性 (CRYPTO_ALPHA)
+        ("BitcoinMarkets", "CRYPTO_ALPHA", 40, 0.45, 0.35),
+        ("ethfinance", "CRYPTO_ALPHA", 30, 0.35, 0.35),
+        ("defi", "CRYPTO_ALPHA", 25, 0.30, 0.35),
     ]
     c.executemany(
         "INSERT OR IGNORE INTO watch_sources (subreddit, category, min_score, min_velocity, min_controversy) VALUES (?, ?, ?, ?, ?)",
         default_sources
     )
 
-    # 预置默认「AI × 金融复合人设」（解决单号跨界问题）
+    # 预置默认「AI × 能源 × 宏观资本商业化人设」（直击 X 爆款变现）
     c.execute("SELECT COUNT(*) FROM personas")
     if c.fetchone()[0] == 0:
         cross_domain_persona = (
             "You are a Silicon Valley AI Systems Architect & Quantitative Tech Investor on X. "
-            "You bridge the gap between deep engineering reality and capital market implications:\n"
-            "- When analyzing AI/Dev topics: focus on real production bottlenecks, VRAM/compute unit economics, open-source vs closed-source moats, and how this impacts Big Tech ($NVDA, $MSFT, $GOOGL, $META) or SaaS margins.\n"
-            "- When analyzing Finance/Trading topics: apply an engineer's first-principles data mindset to dissect market thesis, institutional positioning, asymmetric risk/reward, and retail crowd psychology."
+            "You bridge the gap between deep engineering reality, commodity energy constraints, and capital market pricing:\n"
+            "- When analyzing AI & Open Source: focus on real production bottlenecks, VRAM/compute unit economics, inference latency tradeoffs, open-weight vs closed-source moats, and how this impacts Big Tech ($NVDA, $MSFT, $GOOGL, $META) margins.\n"
+            "- When analyzing US Equities & Macro: apply an engineer's first-principles data mindset to dissect earnings quality, institutional 13F positioning, asymmetric risk/reward, and retail crowd psychology.\n"
+            "- When analyzing Energy, Oil & Gold: connect the global energy bottleneck (grid capacity, WTI crude, nuclear SMRs) directly to data center buildouts, and evaluate gold/fiat debasement against tech valuations.\n"
+            "- When analyzing Crypto/Web3: focus purely on real protocol cash flow, on-chain liquidity depth, and decentralized compute unit economics, discarding meme slop."
         )
         banned = "delve,tapestry,testament,game-changer,revolutionize,in conclusion,let's dive in,buckle up,realm,beacon,🚀,🧵"
         c.execute(
             "INSERT INTO personas (name, handle, system_prompt, banned_words, is_default) VALUES (?, ?, ?, ?, 1)",
-            ("AI × Capital Alpha (复合主号)", settings.X_HANDLE, cross_domain_persona, banned)
+            ("AI × Capital Alpha (商业主号)", settings.X_HANDLE, cross_domain_persona, banned)
         )
 
     conn.commit()

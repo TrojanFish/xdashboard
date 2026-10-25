@@ -46,13 +46,15 @@
             </h1>
         </div>
         <div class="flex items-center gap-1.5 sm:gap-2.5 overflow-x-auto py-1">
-            <!-- 赛道筛选下拉 -->
+            <!-- 赛道筛选下拉 (四大核心变现赛道 + 双外部趋势流) -->
             <select id="categorySelect" onchange="setFilter('category', this.value)" class="bg-[#FFFFFF] border border-[#E0DBD2] text-xs text-[#3A3630] rounded-lg px-2.5 py-1.5 outline-none font-sans font-medium hover:border-[#CC5A2B]/40 transition shadow-xs">
-                <option value="ALL">🌐 全部赛道</option>
-                <option value="GITHUB_TRENDING">⭐ GitHub 开源趋势</option>
-                <option value="HACKER_NEWS">🟠 Hacker News 深度讨论</option>
-                <option value="AI_DEV">🤖 AI / 开发者生态</option>
-                <option value="FINANCE">📈 金融 / 资本与宏观</option>
+                <option value="ALL">🌐 全部商业赛道聚合 (All Tracks)</option>
+                <option value="AI_DEV">🤖 深度 AI / 开源架构 (AI & Dev)</option>
+                <option value="MACRO_STOCKS">📈 美股异动 / 华尔街宏观 (US Equities & Macro)</option>
+                <option value="COMMODITIES_ENERGY">🛢️ 能源大宗 / 石油与黄金 (Energy, Oil & Gold)</option>
+                <option value="CRYPTO_ALPHA">🪙 加密资本 / 链上量化 (Crypto & DeFi)</option>
+                <option value="GITHUB_TRENDING">⭐ GitHub 爆款代码 (GitHub Trending)</option>
+                <option value="HACKER_NEWS">🟠 Hacker News 硅谷风向 (YC Hacker News)</option>
             </select>
 
             <!-- 状态筛选下拉 -->
@@ -148,8 +150,10 @@
             <form onsubmit="addSource(event)" class="grid grid-cols-6 gap-2 pt-2 border-t border-[#EFEAE2]">
                 <input type="text" id="newSub" placeholder="Subreddit名(例: BitcoinMarkets)" required class="col-span-2 bg-[#FAF8F5] border border-[#E0DBD2] rounded-lg px-3 py-1.5 text-xs text-[#201E1C] outline-none">
                 <select id="newCat" class="bg-[#FAF8F5] border border-[#E0DBD2] rounded-lg px-2 py-1.5 text-xs text-[#201E1C] outline-none">
-                    <option value="AI_DEV">AI_DEV</option>
-                    <option value="FINANCE">FINANCE</option>
+                    <option value="AI_DEV">🤖 深度 AI / 开源架构</option>
+                    <option value="MACRO_STOCKS">📈 美股异动 / 华尔街宏观</option>
+                    <option value="COMMODITIES_ENERGY">🛢️ 能源大宗 / 石油黄金</option>
+                    <option value="CRYPTO_ALPHA">🪙 加密资本 / 链上量化</option>
                 </select>
                 <input type="number" id="newScore" placeholder="最低分" value="30" class="bg-[#FAF8F5] border border-[#E0DBD2] rounded-lg px-2 py-1.5 text-xs text-[#201E1C] outline-none">
                 <input type="number" step="0.05" id="newVel" placeholder="斜率" value="0.4" class="bg-[#FAF8F5] border border-[#E0DBD2] rounded-lg px-2 py-1.5 text-xs text-[#201E1C] outline-none">
@@ -323,14 +327,39 @@ function renderFeedList() {
         
         let badgeColor = 'bg-[#FEF3E2] text-[#B45309] border-[#FDE68A]';
         let subText = 'r/' + d.subreddit;
+        let footerPrefix = `<span>▲ ${d.score} · 💬 ${d.num_comments}</span>`;
+        let frameworkColor = 'text-[#CC5A2B]';
+
         if (isGithub) {
             badgeColor = 'bg-[#F3EFFB] text-[#553C9A] border-[#DDD3F5]';
             subText = '🐙 ' + d.subreddit;
+            footerPrefix = `<span>🐙 开源拆解</span>`;
+            frameworkColor = 'text-[#553C9A]';
         } else if (isHN) {
             badgeColor = 'bg-[#FFF4E5] text-[#C2410C] border-[#FED7AA]';
             subText = '🟠 Hacker News';
+            footerPrefix = `<span>🟠 硅谷风向</span>`;
+            frameworkColor = 'text-[#C2410C]';
         } else if (d.category === 'AI_DEV') {
             badgeColor = 'bg-[#EBF3FA] text-[#1E6091] border-[#D0E3F3]';
+            subText = '🤖 r/' + d.subreddit;
+            footerPrefix = `<span>🤖 AI/架构</span>`;
+            frameworkColor = 'text-[#1E6091]';
+        } else if (d.category === 'COMMODITIES_ENERGY' || ['commodities', 'Gold', 'energy', 'UraniumSqueeze'].includes(d.subreddit)) {
+            badgeColor = 'bg-[#FEFCE8] text-[#854D0E] border-[#FEF08A]';
+            subText = '🛢️ r/' + d.subreddit;
+            footerPrefix = `<span>🛢️ 能源大宗</span>`;
+            frameworkColor = 'text-[#854D0E]';
+        } else if (d.category === 'MACRO_STOCKS' || ['stocks', 'wallstreetbets', 'investing', 'ValueInvesting', 'options', 'algotrading'].includes(d.subreddit)) {
+            badgeColor = 'bg-[#F0FDF4] text-[#166534] border-[#BBF7D0]';
+            subText = '📈 r/' + d.subreddit;
+            footerPrefix = `<span>📈 美股宏观</span>`;
+            frameworkColor = 'text-[#166534]';
+        } else if (d.category === 'CRYPTO_ALPHA' || ['BitcoinMarkets', 'ethfinance', 'defi'].includes(d.subreddit)) {
+            badgeColor = 'bg-[#FFFBEB] text-[#B45309] border-[#FDE68A]';
+            subText = '🪙 r/' + d.subreddit;
+            footerPrefix = `<span>🪙 链上资本</span>`;
+            frameworkColor = 'text-[#B45309]';
         }
 
         const tier = d.content_tier || 'DEEP_DIVE_MEMO';
@@ -351,14 +380,6 @@ function renderFeedList() {
                    <span title="点赞/增长斜率">▲ ${d.score} · ⚡ ${d.velocity}/m</span>
                    <span title="评论争议比">💬 ${d.num_comments}</span>
                </div>`;
-
-        let footerPrefix = `<span>▲ ${d.score} · 💬 ${d.num_comments}</span>`;
-        if (isGithub) footerPrefix = `<span>🐙 开源拆解</span>`;
-        else if (isHN) footerPrefix = `<span>🟠 硅谷大厂争议</span>`;
-
-        let frameworkColor = 'text-[#CC5A2B]';
-        if (isGithub) frameworkColor = 'text-[#553C9A]';
-        else if (isHN) frameworkColor = 'text-[#C2410C]';
 
         return `
         <div onclick="selectDraft('${d.post_id}')" class="p-4 cursor-pointer transition hover:bg-[#FFFFFF]/70 ${isSelected ? 'bg-[#FFFFFF] border-l-4 border-l-[#CC5A2B] shadow-sm' : ''}">
