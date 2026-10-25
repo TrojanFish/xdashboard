@@ -38,76 +38,120 @@
 
     <!-- 顶部导航栏 (Claude 暖色纸质雅致风) -->
     <header class="h-14 border-b border-[#E8E2D8] bg-[#FFFFFF] px-4 sm:px-6 flex items-center justify-between shrink-0 shadow-sm gap-2">
+        <!-- 左侧 Logo & 核心筛选器 -->
         <div class="flex items-center gap-2 sm:gap-3 shrink-0">
-            <span class="w-2.5 h-2.5 rounded-full bg-[#386641] animate-pulse"></span>
-            <h1 class="font-bold text-sm sm:text-base tracking-tight text-[#201E1C] font-sans">
-                PERSONAL ALPHA STUDIO 
-                <span class="hidden 2xl:inline text-xs font-normal text-[#757067] ml-2 font-mono">GitHub Trending + Hacker News + Reddit → X Alpha</span>
-            </h1>
+            <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-[#386641] animate-pulse"></span>
+                <h1 class="font-bold text-sm sm:text-base tracking-tight text-[#201E1C] font-sans whitespace-nowrap">
+                    ALPHA STUDIO
+                </h1>
+            </div>
+
+            <div class="h-4 w-[1px] bg-[#E2DBD0] hidden sm:block"></div>
+
+            <!-- 赛道筛选下拉 (精炼标签) -->
+            <select id="categorySelect" onchange="setFilter('category', this.value)" class="bg-[#FAF8F5] border border-[#E0DBD2] text-xs text-[#3A3630] rounded-lg px-2.5 py-1.5 outline-none font-sans font-medium hover:border-[#CC5A2B]/40 transition shadow-xs max-w-[140px] sm:max-w-[170px]">
+                <option value="ALL">🌐 全部赛道</option>
+                <option value="AI_DEV">🤖 深度 AI / 架构</option>
+                <option value="MACRO_STOCKS">📈 美股异动 / 宏观</option>
+                <option value="COMMODITIES_ENERGY">🛢️ 能源大宗 / 黄金</option>
+                <option value="CRYPTO_ALPHA">🪙 加密资本 / 链上</option>
+                <option value="GITHUB_TRENDING">⭐ GitHub 爆款代码</option>
+                <option value="HACKER_NEWS">🟠 Hacker News 风向</option>
+            </select>
+
+            <!-- 状态筛选下拉 (精炼标签) -->
+            <select id="statusSelect" onchange="setFilter('status', this.value)" class="bg-[#FAF8F5] border border-[#E0DBD2] text-xs text-[#3A3630] rounded-lg px-2.5 py-1.5 outline-none font-sans font-medium hover:border-[#CC5A2B]/40 transition shadow-xs max-w-[125px]">
+                <option value="all_active">📋 全部待办</option>
+                <option value="raw_unprocessed">⏳ 待手动二创</option>
+                <option value="pending">✍️ 待发布草稿</option>
+                <option value="published">✅ 已发布</option>
+                <option value="archived">🗑️ 已归档跳过</option>
+            </select>
         </div>
-        <div class="flex items-center gap-1.5 sm:gap-2.5 overflow-x-auto py-1">
-            <!-- 赛道筛选下拉 (四大核心变现赛道 + 双外部趋势流) -->
-            <select id="categorySelect" onchange="setFilter('category', this.value)" class="bg-[#FFFFFF] border border-[#E0DBD2] text-xs text-[#3A3630] rounded-lg px-2.5 py-1.5 outline-none font-sans font-medium hover:border-[#CC5A2B]/40 transition shadow-xs">
-                <option value="ALL">🌐 全部商业赛道聚合 (All Tracks)</option>
-                <option value="AI_DEV">🤖 深度 AI / 开源架构 (AI & Dev)</option>
-                <option value="MACRO_STOCKS">📈 美股异动 / 华尔街宏观 (US Equities & Macro)</option>
-                <option value="COMMODITIES_ENERGY">🛢️ 能源大宗 / 石油与黄金 (Energy, Oil & Gold)</option>
-                <option value="CRYPTO_ALPHA">🪙 加密资本 / 链上量化 (Crypto & DeFi)</option>
-                <option value="GITHUB_TRENDING">⭐ GitHub 爆款代码 (GitHub Trending)</option>
-                <option value="HACKER_NEWS">🟠 Hacker News 硅谷风向 (YC Hacker News)</option>
-            </select>
 
-            <!-- 状态筛选下拉 -->
-            <select id="statusSelect" onchange="setFilter('status', this.value)" class="bg-[#FFFFFF] border border-[#E0DBD2] text-xs text-[#3A3630] rounded-lg px-2.5 py-1.5 outline-none font-sans font-medium hover:border-[#CC5A2B]/40 transition shadow-xs">
-                <option value="all_active">📋 全部待办 (待二创 + 待发布)</option>
-                <option value="raw_unprocessed">⏳ 待手动二创 (Raw)</option>
-                <option value="pending">✍️ 待发布草稿 (Ready)</option>
-                <option value="published">✅ 已发布 (Published)</option>
-                <option value="archived">🗑️ 已归档跳过 (Archived)</option>
-            </select>
-
-            <div class="h-4 w-[1px] bg-[#E2DBD0] mx-0.5"></div>
-
-            <!-- 核心开关：输出语言 中/英 -->
-            <button onclick="toggleLanguage()" id="langBtn" title="点击切换 AI 二创输出语言：英文(EN) 适合英文受众，中文(ZH) 适合中文账号" class="px-2.5 py-1.5 rounded-lg border text-xs font-medium font-sans flex items-center gap-1.5 transition bg-[#F3EFE9] text-[#524E48] border-[#E0DBD0]">
-                <span id="langBtnText">🌐 输出: EN</span>
+        <!-- 右侧核心操作区 (收纳折叠，告别拥挤) -->
+        <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <!-- 语言快速切换胶囊 -->
+            <button onclick="toggleLanguage()" id="langBtn" title="点击一键切换 AI 二创输出语言：简体中文 / English" class="px-2.5 py-1.5 rounded-lg border text-xs font-medium font-sans flex items-center gap-1 transition bg-[#F3EFE9] text-[#524E48] border-[#E0DBD0] shadow-xs">
+                <span id="langBtnText">🌐 EN</span>
             </button>
 
-            <!-- 核心开关：自动二创 / 手动精选 -->
-            <button onclick="toggleSetting('auto_synthesize')" id="autoSynthBtn" title="点击切换：全自动二创 VS 仅抓取原始情报(省Token/手动精选)" class="px-2.5 py-1.5 rounded-lg border text-xs font-medium font-sans flex items-center gap-1.5 transition">
-                <span class="w-2 h-2 rounded-full bg-[#2E7D32]"></span>
-                <span id="autoSynthText">🤖 自动二创: 开</span>
-            </button>
-
-            <!-- 核心开关：后台定时巡航 / 暂停 -->
-            <button onclick="toggleSetting('auto_scan_enabled')" id="autoScanBtn" title="点击切换：开启后台30分钟定时巡航 VS 暂停巡航(仅手动触发)" class="px-2.5 py-1.5 rounded-lg border text-xs font-medium font-sans flex items-center gap-1.5 transition">
-                <span class="w-2 h-2 rounded-full bg-[#2E7D32]"></span>
-                <span id="autoScanText">⏱️ 巡航: 30m</span>
-            </button>
-
-            <!-- 监控源管理 -->
-            <button onclick="openSourcesModal()" class="bg-[#F3EFE9] hover:bg-[#EAE4D9] text-[#3D3933] text-xs font-medium px-2.5 py-1.5 rounded-lg border border-[#E0DBD0] transition font-sans">⚙️ 监控源</button>
-
-            <!-- RSS 分发源 -->
-            <a href="/rss.xml" target="_blank" title="打开标准 W3C RSS 2.0 订阅源（用于自动化同步至个人博客或 Newsletter）" class="bg-[#F3EFE9] hover:bg-[#EAE4D9] text-[#CC5A2B] text-xs font-medium px-2.5 py-1.5 rounded-lg border border-[#E0DBD0] transition font-sans flex items-center gap-1">
-                <span>📡 RSS</span>
-            </a>
-
-            <!-- Telegram 移动中枢在线徽章 -->
-            <span id="tgBadge" title="Telegram 移动指挥中枢已就绪 (已启用情报秒级私聊推流与内联快捷交互)" class="bg-[#EDF6EE] text-[#1B4D2E] text-xs font-medium px-2.5 py-1.5 rounded-lg border border-[#C4DECA] font-sans hidden items-center gap-1 shadow-xs">
-                <span class="w-2 h-2 rounded-full bg-[#2E7D32] animate-pulse"></span>
-                <span>🤖 TG 在线</span>
-            </span>
-
-            <!-- 手动触发全网扫描 -->
-            <button onclick="triggerScan()" id="scanBtn" class="bg-[#CC5A2B] hover:bg-[#B84E22] text-white text-xs font-medium px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-sm font-sans">
+            <!-- 核心行动按钮：全网扫描 -->
+            <button onclick="triggerScan()" id="scanBtn" class="bg-[#CC5A2B] hover:bg-[#B84E22] text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-sm font-sans whitespace-nowrap">
                 <span>⚡ 扫描全网</span>
             </button>
 
             <div class="h-4 w-[1px] bg-[#E2DBD0] mx-0.5"></div>
 
-            <!-- 退出 -->
-            <button onclick="logout()" title="退出工作台" class="text-[#7A746B] hover:text-[#C53030] hover:bg-[#FFF5F5] text-xs px-2 py-1.5 rounded-lg border border-[#EAE4DA] transition flex items-center gap-1 font-sans">
+            <!-- 系统设置与控制中心 (下拉抽屉面板，集成二创/巡航/TG/RSS/监控源) -->
+            <div class="relative">
+                <button onclick="toggleSettingsMenu(event)" id="settingsMenuBtn" title="系统设置与后台控制中心" class="bg-[#F3EFE9] hover:bg-[#EAE4D9] text-[#3D3933] text-xs font-medium px-2.5 py-1.5 rounded-lg border border-[#E0DBD0] transition font-sans flex items-center gap-1.5 shadow-xs whitespace-nowrap">
+                    <span>⚙️ 设置</span>
+                    <span id="settingsStatusDot" class="w-2 h-2 rounded-full bg-[#2E7D32]"></span>
+                </button>
+
+                <!-- 设置抽屉菜单浮层 -->
+                <div id="settingsMenuDropdown" class="hidden absolute right-0 mt-2 w-72 bg-[#FFFFFF] border border-[#E5DFD4] rounded-2xl shadow-xl p-3.5 z-50 space-y-3 font-sans">
+                    <div class="flex items-center justify-between border-b border-[#EFEAE2] pb-2">
+                        <span class="text-xs font-bold text-[#201E1C]">⚙️ 系统控制与偏好</span>
+                        <span class="text-[10px] font-mono text-[#8C867D]">Alpha Studio</span>
+                    </div>
+
+                    <!-- 1. 自动二创开关 -->
+                    <div class="flex items-center justify-between text-xs">
+                        <div class="space-y-0.5">
+                            <div class="font-medium text-[#201E1C]">🤖 AI 自动二创</div>
+                            <div class="text-[11px] text-[#7A746B]">扫描后自动产出长短推文与卡片</div>
+                        </div>
+                        <button onclick="toggleSetting('auto_synthesize')" id="autoSynthBtn" class="px-2.5 py-1 rounded-lg border text-xs font-medium font-sans flex items-center gap-1.5 transition">
+                            <span class="w-1.5 h-1.5 rounded-full bg-[#2E7D32]"></span>
+                            <span id="autoSynthText">开</span>
+                        </button>
+                    </div>
+
+                    <!-- 2. 后台巡航定时器开关 -->
+                    <div class="flex items-center justify-between text-xs">
+                        <div class="space-y-0.5">
+                            <div class="font-medium text-[#201E1C]">⏱️ 后台定时巡航</div>
+                            <div class="text-[11px] text-[#7A746B]">每 30 分钟抓取全网最新情报</div>
+                        </div>
+                        <button onclick="toggleSetting('auto_scan_enabled')" id="autoScanBtn" class="px-2.5 py-1 rounded-lg border text-xs font-medium font-sans flex items-center gap-1.5 transition">
+                            <span class="w-1.5 h-1.5 rounded-full bg-[#2E7D32]"></span>
+                            <span id="autoScanText">30m</span>
+                        </button>
+                    </div>
+
+                    <div class="border-t border-[#EFEAE2] pt-2 space-y-2">
+                        <!-- 3. 监控源配置 -->
+                        <button onclick="toggleSettingsMenu(); openSourcesModal();" class="w-full text-left bg-[#FAF8F5] hover:bg-[#F3EFE9] border border-[#E0DBD0] px-2.5 py-1.5 rounded-lg text-xs text-[#3D3933] font-medium flex items-center justify-between transition">
+                            <span>🛠️ 社区监控源与过滤阈值</span>
+                            <span class="text-[#7A746B]">›</span>
+                        </button>
+
+                        <!-- 4. RSS 订阅源 -->
+                        <div class="flex items-center justify-between bg-[#FAF8F5] border border-[#E0DBD0] px-2.5 py-1.5 rounded-lg text-xs">
+                            <span class="text-[#CC5A2B] font-medium flex items-center gap-1">📡 RSS 2.0 订阅流</span>
+                            <div class="flex items-center gap-2">
+                                <button onclick="navigator.clipboard.writeText(window.location.origin + '/rss.xml'); showToast('📋 已复制 RSS 订阅地址！');" class="text-[11px] text-[#7A746B] hover:text-[#201E1C]">复制</button>
+                                <a href="/rss.xml" target="_blank" class="text-[11px] text-[#CC5A2B] hover:underline">打开 ↗</a>
+                            </div>
+                        </div>
+
+                        <!-- 5. Telegram 状态 -->
+                        <div id="tgBadge" class="hidden items-center justify-between bg-[#EDF6EE] border border-[#C4DECA] px-2.5 py-1.5 rounded-lg text-xs text-[#1B4D2E]">
+                            <span class="flex items-center gap-1.5 font-medium">
+                                <span class="w-1.5 h-1.5 rounded-full bg-[#2E7D32] animate-pulse"></span>
+                                <span>Telegram 机器人已连接</span>
+                            </span>
+                            <span class="text-[10px] font-mono text-[#2E7D32]">在线</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 退出登录 -->
+            <button onclick="logout()" title="退出工作台" class="text-[#7A746B] hover:text-[#C53030] hover:bg-[#FFF5F5] text-xs px-2 py-1.5 rounded-lg border border-[#EAE4DA] transition flex items-center shadow-xs font-sans">
                 <span>🚪</span>
             </button>
         </div>
@@ -167,8 +211,8 @@
         </div>
     </div>
 
-    <!-- 今日发帖节奏面板 (发布计数 + 最优时间窗口提示) -->
-    <div id="rhythmBar" class="hidden bg-[#F5F1EA] border-b border-[#E8E2D8] px-6 py-1.5 flex items-center gap-6 text-xs font-sans text-[#524E48] shrink-0">
+    <!-- 今日发帖节奏面板 (发布计数 + 最优时间窗口提示 · 响应式不挤压) -->
+    <div id="rhythmBar" class="hidden bg-[#F5F1EA] border-b border-[#E8E2D8] px-4 sm:px-6 py-1.5 flex items-center gap-4 sm:gap-6 text-xs font-sans text-[#524E48] shrink-0 overflow-x-auto whitespace-nowrap">
         <span class="font-semibold text-[#201E1C]">📅 今日节奏</span>
         <span id="rhythmPublished">✅ 已发: <b id="todayPublished">0</b> 条主帖</span>
         <span>·</span>
@@ -218,6 +262,25 @@ function showToast(msg, undoAction = null) {
     }
 }
 
+function toggleSettingsMenu(e) {
+    if (e) e.stopPropagation();
+    const dropdown = document.getElementById('settingsMenuDropdown');
+    if (dropdown) {
+        dropdown.classList.toggle('hidden');
+    }
+}
+
+// 点击页面外部区域自动收起设置菜单浮层
+document.addEventListener('click', (e) => {
+    const dropdown = document.getElementById('settingsMenuDropdown');
+    const btn = document.getElementById('settingsMenuBtn');
+    if (dropdown && !dropdown.classList.contains('hidden')) {
+        if (!dropdown.contains(e.target) && (!btn || !btn.contains(e.target))) {
+            dropdown.classList.add('hidden');
+        }
+    }
+});
+
 function renderHeaderSettings() {
     const s = appConfig.settings || {};
     const autoSynth = s.auto_synthesize === '1';
@@ -225,39 +288,43 @@ function renderHeaderSettings() {
     const lang = s.content_language || 'en';
 
     const synthBtn = document.getElementById('autoSynthBtn');
-    const synthText = document.getElementById('autoSynthText');
-    if (synthBtn && synthText) {
+    if (synthBtn) {
         if (autoSynth) {
-            synthBtn.className = "px-2.5 py-1.5 rounded-lg border text-xs font-medium font-sans flex items-center gap-1.5 transition bg-[#EDF6EE] text-[#1B4D2E] border-[#C4DECA]";
-            synthBtn.innerHTML = '<span class="w-2 h-2 rounded-full bg-[#2E7D32]"></span><span>🤖 自动二创: 开</span>';
+            synthBtn.className = "px-2.5 py-1 rounded-lg border text-xs font-medium font-sans flex items-center gap-1.5 transition bg-[#EDF6EE] text-[#1B4D2E] border-[#C4DECA]";
+            synthBtn.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-[#2E7D32]"></span><span>已开启</span>';
         } else {
-            synthBtn.className = "px-2.5 py-1.5 rounded-lg border text-xs font-medium font-sans flex items-center gap-1.5 transition bg-[#FFFBEB] text-[#B45309] border-[#FDE68A]";
-            synthBtn.innerHTML = '<span class="w-2 h-2 rounded-full bg-[#D97706]"></span><span>🤖 自动二创: 关(省Token)</span>';
+            synthBtn.className = "px-2.5 py-1 rounded-lg border text-xs font-medium font-sans flex items-center gap-1.5 transition bg-[#FFFBEB] text-[#B45309] border-[#FDE68A]";
+            synthBtn.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-[#D97706]"></span><span>省Token(关)</span>';
         }
     }
 
     const scanBtn = document.getElementById('autoScanBtn');
-    const scanText = document.getElementById('autoScanText');
-    if (scanBtn && scanText) {
+    if (scanBtn) {
         if (autoScan) {
-            scanBtn.className = "px-2.5 py-1.5 rounded-lg border text-xs font-medium font-sans flex items-center gap-1.5 transition bg-[#EDF6EE] text-[#1B4D2E] border-[#C4DECA]";
-            scanBtn.innerHTML = '<span class="w-2 h-2 rounded-full bg-[#2E7D32]"></span><span>⏱️ 巡航: 30m</span>';
+            scanBtn.className = "px-2.5 py-1 rounded-lg border text-xs font-medium font-sans flex items-center gap-1.5 transition bg-[#EDF6EE] text-[#1B4D2E] border-[#C4DECA]";
+            scanBtn.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-[#2E7D32]"></span><span>运行中(30m)</span>';
         } else {
-            scanBtn.className = "px-2.5 py-1.5 rounded-lg border text-xs font-medium font-sans flex items-center gap-1.5 transition bg-[#F3EFE9] text-[#7A746B] border-[#E0DBD0]";
-            scanBtn.innerHTML = '<span class="w-2 h-2 rounded-full bg-[#A8A29E]"></span><span>⏱️ 巡航: 暂停</span>';
+            scanBtn.className = "px-2.5 py-1 rounded-lg border text-xs font-medium font-sans flex items-center gap-1.5 transition bg-[#F3EFE9] text-[#7A746B] border-[#E0DBD0]";
+            scanBtn.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-[#A8A29E]"></span><span>已暂停</span>';
         }
     }
 
-    // 语言按钮
+    // 设置按钮上的小红绿指示点 (巡航开启即绿)
+    const dot = document.getElementById('settingsStatusDot');
+    if (dot) {
+        dot.className = autoScan ? "w-2 h-2 rounded-full bg-[#2E7D32]" : "w-2 h-2 rounded-full bg-[#D97706]";
+    }
+
+    // 语言切换胶囊按钮
     const langBtn = document.getElementById('langBtn');
     const langBtnText = document.getElementById('langBtnText');
     if (langBtn && langBtnText) {
         if (lang === 'zh') {
-            langBtn.className = "px-2.5 py-1.5 rounded-lg border text-xs font-medium font-sans flex items-center gap-1.5 transition bg-[#EDF4FF] text-[#1E3A8A] border-[#BFDBFE]";
-            langBtnText.innerText = '🀄 输出: 中文';
+            langBtn.className = "px-2.5 py-1.5 rounded-lg border text-xs font-medium font-sans flex items-center gap-1 transition bg-[#EDF4FF] text-[#1E3A8A] border-[#BFDBFE] shadow-xs";
+            langBtnText.innerText = '🀄 中文';
         } else {
-            langBtn.className = "px-2.5 py-1.5 rounded-lg border text-xs font-medium font-sans flex items-center gap-1.5 transition bg-[#F3EFE9] text-[#524E48] border-[#E0DBD0]";
-            langBtnText.innerText = '🌐 输出: EN';
+            langBtn.className = "px-2.5 py-1.5 rounded-lg border text-xs font-medium font-sans flex items-center gap-1 transition bg-[#F3EFE9] text-[#524E48] border-[#E0DBD0] shadow-xs";
+            langBtnText.innerText = '🌐 EN';
         }
     }
 }
