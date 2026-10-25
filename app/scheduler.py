@@ -122,6 +122,12 @@ def execute_radar_cycle():
                     if draft_data.get("is_worth_posting"):
                         added_count += 1
                         status_tag = "✅ 入库待发"
+                        # 触发 Telegram 实时推流
+                        try:
+                            from app.bot.manager import notify_admin_new_signal
+                            notify_admin_new_signal(draft_data, sig)
+                        except Exception as e_tg:
+                            print(f"      [Telegram 推送异常]: {e_tg}")
                     else:
                         status_tag = f"⏭️ 初筛拦截 ({draft_data.get('skip_reason', '')})"
                     print(f"   -> {status_tag}")
@@ -148,6 +154,19 @@ def execute_radar_cycle():
                     save_raw_signal_only(sig)
                     added_count += 1
                     print(f"   📥 原始情报入库 (待手动二创): [{sig['subreddit']}] {sig['title'][:55]}...")
+                    # 触发 Telegram 原始线索卡片推流（方便手机端一键点击 [AI 重塑]）
+                    try:
+                        from app.bot.manager import notify_admin_new_signal
+                        raw_preview_draft = {
+                            "status": "raw_unprocessed",
+                            "narrative_framework": "Pending AI Synthesis",
+                            "content_tier": "DEEP_DIVE_MEMO",
+                            "short_post": "已抓取新原始情报，可在下方直接点击 [🤖 AI 重塑] 触发深度加工。",
+                            "hook_options": [],
+                        }
+                        notify_admin_new_signal(raw_preview_draft, sig)
+                    except Exception as e_tg:
+                        print(f"      [Telegram 推送异常]: {e_tg}")
                 except Exception as e:
                     print(f"   ❌ 入库失败 [{sig['post_id']}]: {e}")
 

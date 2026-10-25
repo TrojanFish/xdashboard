@@ -86,6 +86,12 @@
                 <span>📡 RSS</span>
             </a>
 
+            <!-- Telegram 移动中枢在线徽章 -->
+            <span id="tgBadge" title="Telegram 移动指挥中枢已就绪 (已启用情报秒级私聊推流与内联快捷交互)" class="bg-[#EDF6EE] text-[#1B4D2E] text-xs font-medium px-2.5 py-1.5 rounded-lg border border-[#C4DECA] font-sans hidden items-center gap-1 shadow-xs">
+                <span class="w-2 h-2 rounded-full bg-[#2E7D32] animate-pulse"></span>
+                <span>🤖 TG 在线</span>
+            </span>
+
             <!-- 手动触发全网扫描 -->
             <button onclick="triggerScan()" id="scanBtn" class="bg-[#CC5A2B] hover:bg-[#B84E22] text-white text-xs font-medium px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-sm font-sans">
                 <span>⚡ 扫描全网</span>
@@ -238,6 +244,16 @@ async function loadConfig() {
             if (!appConfig.has_gemini_key) {
                 document.getElementById('keyAlert').classList.remove('hidden');
                 document.getElementById('keyAlert').classList.add('flex');
+            }
+            if (appConfig.has_telegram) {
+                const tgBadge = document.getElementById('tgBadge');
+                if (tgBadge) {
+                    tgBadge.classList.remove('hidden');
+                    tgBadge.classList.add('flex');
+                    if (appConfig.telegram_channel) {
+                        tgBadge.title = `Telegram 机器人已连接，频道已联动: ${appConfig.telegram_channel}`;
+                    }
+                }
             }
             const rDot = document.getElementById('redditStatusDot');
             const rTitle = document.getElementById('redditStatusTitle');

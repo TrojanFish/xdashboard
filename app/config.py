@@ -23,6 +23,14 @@ class Settings:
     REDDIT_CLIENT_SECRET: str = os.getenv("REDDIT_CLIENT_SECRET", "")
     USER_AGENT: str = os.getenv("REDDIT_USER_AGENT", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
 
+    # Telegram Bot 与广播频道配置
+    TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+    TELEGRAM_ADMIN_CHAT_ID: str = os.getenv("TELEGRAM_ADMIN_CHAT_ID", "").strip()
+    TELEGRAM_CHANNEL_ID: str = os.getenv("TELEGRAM_CHANNEL_ID", "").strip()
+    TELEGRAM_NOTIFY_ON_CAPTURE: bool = os.getenv("TELEGRAM_NOTIFY_ON_CAPTURE", "1").lower() in ("1", "true", "yes")
+    TELEGRAM_BROADCAST_ON_PUBLISH: bool = os.getenv("TELEGRAM_BROADCAST_ON_PUBLISH", "1").lower() in ("1", "true", "yes")
+    TELEGRAM_PROXY_URL: str = os.getenv("TELEGRAM_PROXY_URL", "").strip()
+
 settings = Settings()
 
 if settings.STUDIO_PASSWORD in ("admin123", "change_me_to_strong_password", ""):

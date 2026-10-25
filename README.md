@@ -45,6 +45,12 @@
 - **📡 W3C 标准 RSS 2.0 订阅源分发（新增）**
   - 公开输出 `/rss.xml` 与 `/feed.xml`，自动包含已生成的优质二创文章与完整长文内容。
   - 支持个人独立博客（Astro, Ghost, Hugo, Next.js）、Feedly/Inoreader 阅读器、Substack 或自动化流水线（Zapier, Make）零代码订阅与全网自动同步。
+- **🤖 Telegram 移动指挥中枢与公开频道自动广播（全新）**
+  - **秒级私密推流**：后台扫出高质量 GitHub / HN / Reddit 项目时，手机 Telegram 立即收到高信噪比卡片消息。
+  - **内联快捷交互**：卡片下方附带 `[📋 提取长推]`、`[🚀 唤起 X 发帖]`、`[🤖 AI 重塑]`、`[✅ 标为发布]`、`[🗑️ 归档]` 内联按钮，在手机上单手完成策展流转。
+  - **远程指令运维**：随时在手机输入 `/scan` 远程点火扫描、`/status` 查看数据统计、`/auto` 一键切换省 Token 模式。
+  - **外链一键投喂**：手机上刷到任何感兴趣的 GitHub 项目或网页，直接转发链接给机器人，AI 自动解析提炼并生成草稿。
+  - **私域双飞轮**：点击「已发布」后，可选自动将图文研报同步分发到你的专属 Telegram 频道，沉淀个人私域资产。
 - **🔒 企业级公网安全防护与 Claude 暖色独立工作台**
   - 默认使用非标服务端口（`28828`），搭载 HMAC-SHA256 签名会话防篡改，告别刺眼黑底与简陋弹窗，提供沉浸式 Claude 暖色燕麦纸本风格登录页与一键安全注销。
 
@@ -111,7 +117,21 @@ REDDIT_PROXY_URL=
 # 方案 B (免费)：在 https://www.reddit.com/prefs/apps 注册 script 应用填入凭据
 REDDIT_CLIENT_ID=
 REDDIT_CLIENT_SECRET=
+
+# 【Telegram 机器人与公开频道配置（可选，强烈推荐）】
+# 1. 必填：在 Telegram 联系 @BotFather 创建 Bot 获取 Token
+TELEGRAM_BOT_TOKEN=
+# 2. 必填：你的个人 Telegram 用户数字 ID（联系 @userinfobot 获取，防他人越权）
+TELEGRAM_ADMIN_CHAT_ID=
+# 3. 选填：公开广播频道 Username 或 ID（如 @YourAlphaChannel，用于发布时自动同步）
+TELEGRAM_CHANNEL_ID=
 ```
+
+> **💡 Telegram 机器人极速上手指南**：  
+> 1. 打开 Telegram 搜索并私聊官方机器人 `@BotFather`，输入 `/newbot`，按提示起名后即可复制获得 `TELEGRAM_BOT_TOKEN`；  
+> 2. 私聊官方机器人 `@userinfobot`，发送任意字符，它会立即返回你的 `Id`（纯数字），填入 `TELEGRAM_ADMIN_CHAT_ID`；  
+> 3. （可选）创建一个 Telegram 频道，将你的机器人拉入该频道并设置为**管理员（拥有发布消息权限）**，将频道公开用户名填入 `TELEGRAM_CHANNEL_ID`。  
+> 4. 重启容器后，系统将自动启动后台守护轮询，手机即刻获得全天候远程指挥权！
 
 > **⚠️ 关于海外 VPS 机房 IP 被 Reddit 拦截的说明**：  
 > Reddit 近期对主流公有云机房（AWS, DigitalOcean, Vultr, Hetzner 等）IP 进行了全面封禁（返回 `403 Forbidden`）。  

@@ -29,6 +29,11 @@ SESSION_MAX_AGE = 86400 * 30  # 30 天免登录
 @app.on_event("startup")
 def startup_event():
     start_background_scheduler()
+    try:
+        from app.bot.poller import start_telegram_bot_poller
+        start_telegram_bot_poller()
+    except Exception as e:
+        print(f"⚠️ [Telegram Bot] 启动异常: {e}")
 
 
 def create_session_token(username: str = "admin") -> str:
@@ -207,6 +212,8 @@ def get_config(username: str = Depends(verify_credentials)):
         "x_handle": settings.X_HANDLE,
         "has_gemini_key": bool(settings.GEMINI_API_KEY and settings.GEMINI_API_KEY != "your_gemini_api_key_here"),
         "has_reddit_auth": bool((settings.REDDIT_CLIENT_ID and settings.REDDIT_CLIENT_SECRET) or settings.REDDIT_PROXY_URL),
+        "has_telegram": bool(settings.TELEGRAM_BOT_TOKEN and settings.TELEGRAM_ADMIN_CHAT_ID),
+        "telegram_channel": settings.TELEGRAM_CHANNEL_ID,
         "scan_interval": settings.SCAN_INTERVAL_MINUTES,
         "triage_model": settings.TRIAGE_MODEL,
         "synthesis_model": settings.SYNTHESIS_MODEL,
@@ -284,6 +291,15 @@ def update_status(post_id: str, payload: StatusUpdate, username: str = Depends(v
     conn.execute("UPDATE drafts SET status = ? WHERE post_id = ?", (payload.status, post_id))
     conn.commit()
     conn.close()
+
+    # 如果在 Web 端标记为已发布，自动联动广播至 Telegram Channel
+    if payload.status == "published":
+        try:
+            from app.bot.manager import broadcast_published_draft
+            broadcast_published_draft(post_id)
+        except Exception as e_bc:
+            print(f"[Telegram Broadcast 异常]: {e_bc}")
+
     return {"ok": True}
 
 
