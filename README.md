@@ -93,50 +93,100 @@ cd /opt/xdashboard
 cp .env.example .env
 nano .env   # 或使用 vim .env
 ```
-修改核心配置项：
+
+完整 `.env` 字段内容如下：
 ```ini
+# ==========================================
+# 1. 核心 AI 引擎与工作台访问控制
+# ==========================================
 # 必填：你的 Google Gemini API 密钥 (在 https://aistudio.google.com/ 免费获取)
 GEMINI_API_KEY=AIzaSy...
 
-# 必填：工作台登录密码（务必修改为强密码）
+# 必填：工作台登录密码（部署公网务必修改为高强度密码，防未授权访问）
 STUDIO_PASSWORD=YourStrongPasswordHere
 
-# 服务对外端口（默认 28828）
+# 安全选项：若通过 Nginx / Caddy 等配置了 HTTPS 反代，建议设为 1（仅通过加密 HTTPS 传输会话 Cookie）
+COOKIE_SECURE=0
+
+# 服务对外端口（默认 28828，可根据需要自定义）
 PORT=28828
 
-# 你的 X 账号 Handle（用于卡片右下角水印）
+# 你的 X 账号 Handle（自动印在 16:9 数据卡片右下角水印）
 X_HANDLE=@YourTechCapitalHandle
 
-# 后台自动巡航间隔（默认每 30 分钟扫描一次）
+# 后台自动巡航扫描间隔（单位：分钟，默认 30 分钟）
 SCAN_INTERVAL_MINUTES=30
 
-# 【海外 VPS 必备：防 Reddit 403 封锁二选一】
-# 方案 A (推荐)：填写住宅代理 URL (HTTP/Socks5)
+# ==========================================
+# 2. Telegram 移动指挥中枢与公开频道广播（推荐）
+# ==========================================
+# 必填（开启 TG）：在 Telegram 找 @BotFather 创建机器人获取 Token
+TELEGRAM_BOT_TOKEN=
+
+# 必填（开启 TG）：你的个人 Telegram 用户数字 ID（联系 @userinfobot 获取，严格白名单鉴权）
+TELEGRAM_ADMIN_CHAT_ID=
+
+# 选填：公开广播频道 Username 或 ID（如 @YourAlphaChannel，用于发布时自动同步广播）
+TELEGRAM_CHANNEL_ID=
+
+# 开关控制：捕获到新线索时是否自动推送到手机私聊（1: 开启, 0: 关闭）
+TELEGRAM_NOTIFY_ON_CAPTURE=1
+
+# 开关控制：在工作台或手机点击「已发布」后是否自动广播到 Telegram 频道（1: 开启, 0: 关闭）
+TELEGRAM_BROADCAST_ON_PUBLISH=1
+
+# 可选：本地无代理环境且无法直连 api.telegram.org 时配置代理（海外 VPS 请直接留空）
+TELEGRAM_PROXY_URL=
+
+# ==========================================
+# 3. 社区情报采集与海外 VPS 防封禁
+# ==========================================
+# 注：GitHub Trending 与 Hacker News 为 100% 官方公开 API，海外 VPS 零门槛直接抓取！
+# 以下配置专用于 Reddit 防 403 阻断（二选一）：
+# 方案 A (推荐)：填写 HTTP/Socks5 住宅代理 URL
 REDDIT_PROXY_URL=
 
-# 方案 B (免费)：在 https://www.reddit.com/prefs/apps 注册 script 应用填入凭据
+# 方案 B (免费)：从电脑浏览器复制已登录 Reddit 的 Cookie 填入此处绕过拦截
+REDDIT_COOKIE=
+
+# 方案 C：在 https://www.reddit.com/prefs/apps 免费创建个人 script 应用
 REDDIT_CLIENT_ID=
 REDDIT_CLIENT_SECRET=
-
-# 【Telegram 机器人与公开频道配置（可选，强烈推荐）】
-# 1. 必填：在 Telegram 联系 @BotFather 创建 Bot 获取 Token
-TELEGRAM_BOT_TOKEN=
-# 2. 必填：你的个人 Telegram 用户数字 ID（联系 @userinfobot 获取，防他人越权）
-TELEGRAM_ADMIN_CHAT_ID=
-# 3. 选填：公开广播频道 Username 或 ID（如 @YourAlphaChannel，用于发布时自动同步）
-TELEGRAM_CHANNEL_ID=
 ```
 
-> **💡 Telegram 机器人极速上手指南**：  
-> 1. 打开 Telegram 搜索并私聊官方机器人 `@BotFather`，输入 `/newbot`，按提示起名后即可复制获得 `TELEGRAM_BOT_TOKEN`；  
-> 2. 私聊官方机器人 `@userinfobot`，发送任意字符，它会立即返回你的 `Id`（纯数字），填入 `TELEGRAM_ADMIN_CHAT_ID`；  
-> 3. （可选）创建一个 Telegram 频道，将你的机器人拉入该频道并设置为**管理员（拥有发布消息权限）**，将频道公开用户名填入 `TELEGRAM_CHANNEL_ID`。  
-> 4. 重启容器后，系统将自动启动后台守护轮询，手机即刻获得全天候远程指挥权！
+---
+
+### 📋 环境变量完整速查表 (Environment Variables Reference)
+
+| 环境变量名 | 必填级别 | 默认值 | 作用与配置获取指引 |
+| :--- | :---: | :---: | :--- |
+| `GEMINI_API_KEY` | **必填** | 无 | Google Gemini API 密钥，用于初筛与二创流水线。[免费申请 ↗](https://aistudio.google.com/) |
+| `STUDIO_PASSWORD` | **必填** | `admin123` | Web 控制台管理员登录密码，部署到公网 VPS 时**切勿使用默认弱口令**。 |
+| `PORT` | 可选 | `28828` | Web 控制台服务对外端口。支持自定义，避免与其他服务冲突。 |
+| `COOKIE_SECURE` | 可选 | `0` | Cookie 传输安全控制。配置了 HTTPS 反代时建议填 `1`，纯 HTTP 填 `0`。 |
+| `X_HANDLE` | 推荐 | `@YourXHandle` | 你的 X 账号用户名，自动作为水印印在生成的 16:9 数据卡片右下角。 |
+| `SCAN_INTERVAL_MINUTES`| 可选 | `30` | 后台定时自动全网巡航间隔（单位：分钟）。 |
+| `TELEGRAM_BOT_TOKEN` | 推荐 | 无 | 接入 TG 移动中枢的机器人 Token。在 Telegram 私聊 `@BotFather` 发送 `/newbot` 获取。 |
+| `TELEGRAM_ADMIN_CHAT_ID`| 推荐 | 无 | 个人 Telegram 数字 ID。私聊 `@userinfobot` 获取，系统强制白名单校验防他人越权。 |
+| `TELEGRAM_CHANNEL_ID` | 可选 | 无 | 广播频道用户名（如 `@YourAlpha`）。发布草稿时自动图文分发，沉淀私域。 |
+| `TELEGRAM_NOTIFY_ON_CAPTURE` | 可选 | `1` | 巡航捕获新线索时是否实时推送到手机私聊（`1`: 开启，`0`: 关闭）。 |
+| `TELEGRAM_BROADCAST_ON_PUBLISH`| 可选 | `1` | 标记草稿为「已发布」时是否联动广播至频道（`1`: 开启，`0`: 关闭）。 |
+| `TELEGRAM_PROXY_URL` | 可选 | 无 | 国内个人电脑无法直连 Telegram 时的代理（如 `http://127.0.0.1:7890`，VPS 留空）。 |
+| `REDDIT_PROXY_URL` | 可选 | 无 | 住宅代理 URL（HTTP/Socks5），防止海外 VPS 机房 IP 被 Reddit 403 阻断。 |
+| `REDDIT_COOKIE` | 可选 | 无 | 浏览器已登录 Reddit 的 Cookie，填入后直接利用真实用户身份免阻断抓取。 |
+| `REDDIT_CLIENT_ID` | 可选 | 无 | Reddit 官方 Script 开发者应用 ID。[申请地址 ↗](https://www.reddit.com/prefs/apps) |
+| `REDDIT_CLIENT_SECRET` | 可选 | 无 | Reddit 官方 Script 开发者应用 Secret 密钥。 |
+
+> **💡 Telegram 机器人 1 分钟上手指引**：  
+> 1. 打开 Telegram 搜索官方机器人 **`@BotFather`**，输入 `/newbot`，按提示起名后即可复制获得 `TELEGRAM_BOT_TOKEN`；  
+> 2. 私聊官方机器人 **`@userinfobot`**，发送任意字符，它会立即返回你的 `Id`（纯数字），填入 `TELEGRAM_ADMIN_CHAT_ID`；  
+> 3. （可选）创建一个 Telegram 频道，将你的机器人拉入该频道并设置为**管理员（拥有发布消息权限）**，将频道公开用户名填入 `TELEGRAM_CHANNEL_ID`；  
+> 4. 重启容器后，系统将自动启动后台守护轮询，手机打开机器人即可看到**免打字快捷大按钮面板**！
 
 > **⚠️ 关于海外 VPS 机房 IP 被 Reddit 拦截的说明**：  
-> Reddit 近期对主流公有云机房（AWS, DigitalOcean, Vultr, Hetzner 等）IP 进行了全面封禁（返回 `403 Forbidden`）。  
-> - **推荐做法**：配置 `REDDIT_PROXY_URL`（住宅代理）；  
-> - **或者**：在 Reddit 免费申请个人 Script 类型 API 填入 `REDDIT_CLIENT_ID` 与 `SECRET`，系统将自动使用 OAuth 协议免封禁请求。
+> Reddit 对公有云机房（AWS, DigitalOcean, Vultr, Hetzner 等）IP 施行了 Cloudflare 阻断（返回 `403 Forbidden`）。  
+> - **推荐做法**：配置 `REDDIT_PROXY_URL`（住宅代理），或者将电脑浏览器里的 `REDDIT_COOKIE` 复制填入；  
+> - **开源替代**：GitHub Trending 与 Hacker News 拥有 100% 官方公开 API，海外 VPS 零代理、零门槛稳定采集！
 
 ### 4. 放行防火墙端口
 确保 VPS 云厂商安全组（Security Group）或系统防火墙开放了 `28828` 端口：
@@ -235,28 +285,38 @@ cp data/studio.db data/studio.db.bak_$(date +%Y%m%d)
 
 ```text
 xdashboard/
-├── Dockerfile                  # 容器镜像构建配置（暴露端口 28828）
+├── Dockerfile                  # 容器镜像构建配置（分层缓存优化，暴露端口 28828）
 ├── docker-compose.yml          # 容器服务编排
-├── requirements.txt            # Python 依赖清单
+├── requirements.txt            # Python 核心依赖清单
+├── .dockerignore               # 镜像排除配置（杜绝 .env 凭证泄露进镜像层）
 ├── .env.example                # 环境变量配置模板
 ├── .gitignore                  # Git 忽略配置（防泄露密钥与数据文件）
 ├── README.md                   # 项目全套说明与部署文档
 ├── data/                       # 持久化存储挂载卷
 │   ├── .gitkeep
-│   └── studio.db               # SQLite 数据库（自动初始化 4 张核心表）
+│   └── studio.db               # SQLite 数据库（WAL 并发模式，5张核心表）
 └── app/
     ├── config.py               # 全局环境与配置加载
-    ├── database.py             # 数据库模型、监控源与人设初始化
-    ├── scheduler.py            # 后台非阻塞定时抓取与合成调度
-    ├── ingestors/
-    │   └── reddit.py           # Reddit 防封禁高信噪比采集插件
-    ├── engine/
-    │   ├── schemas.py          # Pydantic 结构化数据定义
-    │   └── synthesizer.py      # Flash 初筛 + Pro 交叉二创引擎
-    └── web/
-        ├── main.py             # FastAPI 路由、密码认证与服务入口
+    ├── database.py             # 数据库模型、监控源、人设与批量去重
+    ├── scheduler.py            # 后台非阻塞定时抓取与情报合成调度
+    ├── bot/                    # Telegram 移动控制中枢与频道广播
+    │   ├── __init__.py         # 导出对外服务入口
+    │   ├── client.py           # 原生 requests 实现的 Telegram REST 客户端
+    │   ├── formatter.py        # 防注入 HTML 卡片、内联键盘与常驻大面板
+    │   ├── manager.py          # 即时推流管理与公开频道自动广播
+    │   └── poller.py           # 守护线程长轮询、权限校验、指令分发与外链投喂
+    ├── ingestors/              # 多源情报采集插件
+    │   ├── github.py           # GitHub Trending 热门项目与 README 抓取
+    │   ├── hackernews.py       # YC Hacker News 官方 API 并发采集
+    │   └── reddit.py           # Reddit 防 403 阻断高信噪比采集
+    ├── engine/                 # AI 二创流水线
+    │   ├── schemas.py          # Pydantic 结构化数据定义与双格式推文
+    │   └── synthesizer.py      # Flash 初筛 + Pro 深度交叉二创
+    └── web/                    # FastAPI 网页控制台
+        ├── main.py             # Web 路由、HMAC 会话鉴权、RSS 订阅源
         └── templates/
-            └── index.html      # 暗黑风看板 UI（双模式精修与卡片生成）
+            ├── index.html      # Claude 燕麦暖色工作台（双格式精修与卡片生成）
+            └── login.html      # 独立优雅登录页面
 ```
 
 ---
