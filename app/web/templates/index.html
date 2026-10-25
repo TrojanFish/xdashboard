@@ -46,17 +46,17 @@
             </h1>
         </div>
         <div class="flex items-center gap-1.5 sm:gap-2.5 overflow-x-auto py-1">
-            <!-- 赛道筛选 -->
-            <div class="flex bg-[#F3EFE9] p-1 rounded-lg border border-[#E3DDD2] text-xs font-sans">
-                <button onclick="setFilter('category', 'ALL')" id="cat-ALL" class="px-2.5 py-1 rounded-md bg-[#FFFFFF] text-[#201E1C] font-medium shadow-sm">全部赛道</button>
-                <button onclick="setFilter('category', 'GITHUB_TRENDING')" id="cat-GITHUB_TRENDING" class="px-2.5 py-1 rounded-md text-[#6E6860] hover:text-[#201E1C] flex items-center gap-1">⭐ GitHub</button>
-                <button onclick="setFilter('category', 'HACKER_NEWS')" id="cat-HACKER_NEWS" class="px-2.5 py-1 rounded-md text-[#6E6860] hover:text-[#201E1C] flex items-center gap-1">🟠 Hacker News</button>
-                <button onclick="setFilter('category', 'AI_DEV')" id="cat-AI_DEV" class="px-2.5 py-1 rounded-md text-[#6E6860] hover:text-[#201E1C]">AI / 开发</button>
-                <button onclick="setFilter('category', 'FINANCE')" id="cat-FINANCE" class="px-2.5 py-1 rounded-md text-[#6E6860] hover:text-[#201E1C]">金融 / 交易</button>
-            </div>
+            <!-- 赛道筛选下拉 -->
+            <select id="categorySelect" onchange="setFilter('category', this.value)" class="bg-[#FFFFFF] border border-[#E0DBD2] text-xs text-[#3A3630] rounded-lg px-2.5 py-1.5 outline-none font-sans font-medium hover:border-[#CC5A2B]/40 transition shadow-xs">
+                <option value="ALL">🌐 全部赛道</option>
+                <option value="GITHUB_TRENDING">⭐ GitHub 开源趋势</option>
+                <option value="HACKER_NEWS">🟠 Hacker News 深度讨论</option>
+                <option value="AI_DEV">🤖 AI / 开发者生态</option>
+                <option value="FINANCE">📈 金融 / 资本与宏观</option>
+            </select>
 
-            <!-- 状态筛选 -->
-            <select id="statusSelect" onchange="setFilter('status', this.value)" class="bg-[#FFFFFF] border border-[#E0DBD2] text-xs text-[#3A3630] rounded-lg px-2.5 py-1.5 outline-none font-sans font-medium">
+            <!-- 状态筛选下拉 -->
+            <select id="statusSelect" onchange="setFilter('status', this.value)" class="bg-[#FFFFFF] border border-[#E0DBD2] text-xs text-[#3A3630] rounded-lg px-2.5 py-1.5 outline-none font-sans font-medium hover:border-[#CC5A2B]/40 transition shadow-xs">
                 <option value="all_active">📋 全部待办 (待二创 + 待发布)</option>
                 <option value="raw_unprocessed">⏳ 待手动二创 (Raw)</option>
                 <option value="pending">✍️ 待发布草稿 (Ready)</option>
@@ -284,14 +284,11 @@ async function logout() {
 function setFilter(key, val) {
     filters[key] = val;
     if (key === 'category') {
-        ['ALL', 'GITHUB_TRENDING', 'HACKER_NEWS', 'AI_DEV', 'FINANCE'].forEach(c => {
-            const btn = document.getElementById('cat-' + c);
-            if (btn) {
-                btn.className = c === val
-                    ? "px-2.5 py-1 rounded-md bg-[#FFFFFF] text-[#201E1C] font-medium shadow-sm"
-                    : "px-2.5 py-1 rounded-md text-[#6E6860] hover:text-[#201E1C]";
-            }
-        });
+        const catSelect = document.getElementById('categorySelect');
+        if (catSelect) catSelect.value = val;
+    } else if (key === 'status') {
+        const statSelect = document.getElementById('statusSelect');
+        if (statSelect) statSelect.value = val;
     }
     loadDrafts();
 }
