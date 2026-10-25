@@ -6,6 +6,10 @@ from app.database import save_signal_and_draft, save_raw_signal_only, get_settin
 from app.ingestors.reddit import RedditIngestor
 from app.ingestors.github import GitHubTrendingIngestor
 from app.ingestors.hackernews import HackerNewsIngestor
+from app.ingestors.huggingface import HuggingFaceIngestor
+from app.ingestors.commodities import CommoditiesEnergyIngestor
+from app.ingestors.macro import MacroStocksIngestor
+from app.ingestors.crypto import CryptoTrendingIngestor
 from app.engine.synthesizer import SynthesisEngine
 
 _scan_lock = threading.Lock()
@@ -56,31 +60,72 @@ def execute_radar_cycle():
     _scan_state["error"] = None
 
     try:
-        print("🛰️ [Alpha Radar] 开始执行全网情报扫描（GitHub Trending + Hacker News + Reddit）...")
+        print("🛰️ [Alpha Radar] 开始执行全网商业情报扫描（GitHub + Hacker News + Hugging Face + 能源大宗 + 美股宏观 + 加密资本）...")
         github_ingestor = GitHubTrendingIngestor()
         hn_ingestor = HackerNewsIngestor()
+        hf_ingestor = HuggingFaceIngestor()
+        cmd_ingestor = CommoditiesEnergyIngestor()
+        macro_ingestor = MacroStocksIngestor()
+        crypto_ingestor = CryptoTrendingIngestor()
         reddit_ingestor = RedditIngestor()
 
         all_signals = []
 
-        # 1. 抓取 GitHub Trending 热门开源爆款（速度快、无封禁风险）
+        # 1. GitHub Trending 热门开源爆款
         try:
-            gh_signals = github_ingestor.fetch_trending_signals(max_signals=3)
+            gh_signals = github_ingestor.fetch_trending_signals(max_signals=2)
             all_signals.extend(gh_signals)
             print(f"   [GitHub Trending] 筛选出 {len(gh_signals)} 个爆款开源项目。")
         except Exception as e:
             print(f"   ❌ GitHub 采集失败: {e}")
 
-        # 2. 抓取 Hacker News 硅谷顶级架构师/AI/资本深度议题（官方 REST API，海外 VPS 零封禁风险）
-        _scan_state["message"] = f"已捕获 {len(all_signals)} 个 GitHub 项目，正在扫描 Hacker News 深度讨论..."
+        # 2. Hacker News 硅谷顶级架构师/AI/资本深度议题 (官方 REST API)
+        _scan_state["message"] = f"正在扫描 Hacker News 硅谷前沿讨论..."
         try:
-            hn_signals = hn_ingestor.fetch_top_signals(max_signals=3)
+            hn_signals = hn_ingestor.fetch_top_signals(max_signals=2)
             all_signals.extend(hn_signals)
+            print(f"   [Hacker News] 筛选出 {len(hn_signals)} 条深度议题。")
         except Exception as e:
             print(f"   ❌ Hacker News 采集失败: {e}")
 
-        # 3. 抓取 Reddit 社区热贴（遇 403 自动平滑跳过，保证流水线不中断）
-        _scan_state["message"] = f"已捕获 {len(all_signals)} 条核心线索，正在巡检 Reddit 社区..."
+        # 3. Hugging Face Trending 模型权重与前沿学术论文 (AI_DEV 官方源)
+        _scan_state["message"] = f"正在扫描 Hugging Face 爆款开源模型与前沿论文..."
+        try:
+            hf_signals = hf_ingestor.fetch_trending_signals(max_signals=2)
+            all_signals.extend(hf_signals)
+            print(f"   [Hugging Face] 筛选出 {len(hf_signals)} 个前沿开源模型/论文。")
+        except Exception as e:
+            print(f"   ❌ Hugging Face 采集失败: {e}")
+
+        # 4. OilPrice 原油/天然气/核电与黄金大宗商品 (COMMODITIES_ENERGY 官方源)
+        _scan_state["message"] = f"正在扫描 OilPrice & 大宗能源原油与黄金一手情报..."
+        try:
+            cmd_signals = cmd_ingestor.fetch_top_signals(max_signals=2)
+            all_signals.extend(cmd_signals)
+            print(f"   [能源大宗/石油黄金] 筛选出 {len(cmd_signals)} 条核心宏观大宗动态。")
+        except Exception as e:
+            print(f"   ❌ 能源大宗 采集失败: {e}")
+
+        # 5. MarketWatch / 道琼斯美股与宏观异动 (MACRO_STOCKS 官方源)
+        _scan_state["message"] = f"正在扫描华尔街美股异动与道琼斯宏观脉搏..."
+        try:
+            macro_signals = macro_ingestor.fetch_top_signals(max_signals=2)
+            all_signals.extend(macro_signals)
+            print(f"   [美股宏观] 筛选出 {len(macro_signals)} 条华尔街异动与美联储信号。")
+        except Exception as e:
+            print(f"   ❌ 美股宏观 采集失败: {e}")
+
+        # 6. CoinGecko 链上流动性与趋势热榜 (CRYPTO_ALPHA 官方源)
+        _scan_state["message"] = f"正在扫描 CoinGecko 全球加密资本趋势..."
+        try:
+            crypto_signals = crypto_ingestor.fetch_top_signals(max_signals=2)
+            all_signals.extend(crypto_signals)
+            print(f"   [加密资本] 筛选出 {len(crypto_signals)} 条趋势信号。")
+        except Exception as e:
+            print(f"   ❌ 加密资本 采集失败: {e}")
+
+        # 7. Reddit 社区热贴 (遇 403 自动平滑跳过，保证流水线不中断)
+        _scan_state["message"] = f"正在巡检 Reddit 社区深度讨论..."
         try:
             reddit_signals = reddit_ingestor.fetch_qualified_signals(max_signals=2)
             all_signals.extend(reddit_signals)
