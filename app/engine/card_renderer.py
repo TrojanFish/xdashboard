@@ -5,8 +5,8 @@ Requires only Pillow (added to requirements.txt).
 """
 import io
 import math
-import textwrap
 from typing import Dict, Any, List, Optional
+from app.config import settings
 
 try:
     from PIL import Image, ImageDraw, ImageFont
@@ -28,21 +28,33 @@ DOT_SIZE       = 10
 
 
 def _load_font(size: int, bold: bool = False) -> Any:
-    """Try to load a system font, fall back to PIL default."""
+    """Try to load a system font (with CJK support), fall back to PIL default."""
     import os
     try:
         candidates = (
             [
+                "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
+                "/usr/share/fonts/truetype/noto/NotoSansCJK-Bold.ttc",
+                "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+                "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+                "C:/Windows/Fonts/msyhbd.ttc",
+                "C:/Windows/Fonts/simhei.ttf",
+                "C:/Windows/Fonts/arialbd.ttf",
                 "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
                 "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
-                "C:/Windows/Fonts/arialbd.ttf",
                 "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
             ]
             if bold else
             [
+                "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+                "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+                "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+                "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+                "C:/Windows/Fonts/msyh.ttc",
+                "C:/Windows/Fonts/simhei.ttf",
+                "C:/Windows/Fonts/arial.ttf",
                 "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
                 "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-                "C:/Windows/Fonts/arial.ttf",
                 "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
             ]
         )
@@ -52,6 +64,31 @@ def _load_font(size: int, bold: bool = False) -> Any:
     except Exception:
         pass
     return ImageFont.load_default()
+
+
+def _wrap_text(text: str, max_units: int) -> str:
+    """
+    智能折行算法：根据中英文视觉字符宽度换行。
+    CJK 全角字符计 2 宽度单位，西文字符计 1 宽度单位，避免中文无空格长串溢出画布。
+    """
+    if not text:
+        return ""
+    lines = []
+    for paragraph in str(text).split("\n"):
+        cur_line = []
+        cur_units = 0
+        for char in paragraph:
+            char_unit = 2 if ord(char) > 127 else 1
+            if cur_units + char_unit > max_units:
+                lines.append("".join(cur_line))
+                cur_line = [char]
+                cur_units = char_unit
+            else:
+                cur_line.append(char)
+                cur_units += char_unit
+        if cur_line:
+            lines.append("".join(cur_line))
+    return "\n".join(lines)
 
 
 def render_card(
@@ -98,7 +135,7 @@ def render_card(
 
     # ── Card title ──────────────────────────────────────────────────────────
     card_title = (card_data.get("title") or signal_title or "Alpha Intelligence Card")
-    wrapped_title = textwrap.fill(card_title, width=50)
+    wrapped_title = _wrap_text(card_title, max_units=54)
     draw.text((28, header_y + 36), wrapped_title, font=f_title, fill=TEXT_PRIMARY)
 
     # Divider beneath title
@@ -107,7 +144,7 @@ def render_card(
     draw.line([(28, divider_y), (W - 28, divider_y)], fill=BORDER_COLOR, width=1)
 
     # ── Metrics grid ────────────────────────────────────────────────────────
-    metrics: List[Dict] = card_data.get("metrics") or []
+    metrics: List[Any] = card_data.get("metrics") or []
     if not metrics:
         draw.text((W // 2, H // 2), "No metrics — run AI synthesis first",
                   font=f_label, fill=TEXT_SECONDARY, anchor="mm")
@@ -129,7 +166,11 @@ def render_card(
             x1  = x0 + cell_w - 12
             y1  = y0 + cell_h - 12
 
-            sent = m.get("sentiment", "neutral")
+            m_dict = m if isinstance(m, dict) else {}
+            sent = m_dict.get("sentiment", "neutral")
+            label = str(m_dict.get("label", "")).upper()
+            val = str(m_dict.get("value", ""))
+
             if sent == "positive":
                 bc, dc, bg = POS_COLOR, POS_COLOR, (18, 38, 20)
             elif sent == "negative":
@@ -141,9 +182,9 @@ def render_card(
                                    radius=8, fill=bg, outline=bc, width=1)
             draw.ellipse([(x0+12, y0+14), (x0+12+DOT_SIZE, y0+14+DOT_SIZE)], fill=dc)
             draw.text((x0+12+DOT_SIZE+8, y0+14),
-                      m.get("label", "").upper(), font=f_label, fill=TEXT_SECONDARY)
+                      label, font=f_label, fill=TEXT_SECONDARY)
             draw.text((x0+12, y0+42),
-                      textwrap.fill(m.get("value", ""), width=32),
+                      _wrap_text(val, max_units=36),
                       font=f_value, fill=TEXT_PRIMARY)
 
     # ── Bottom brand bar ────────────────────────────────────────────────────
@@ -151,7 +192,8 @@ def render_card(
     draw.line([(0, H - 42), (W, H - 42)], fill=BORDER_COLOR, width=1)
     draw.text((28, H - 21), "Alpha Studio  •  Powered by Gemini",
               font=f_brand, fill=TEXT_SECONDARY, anchor="lm")
-    draw.text((W - 28, H - 21), "alpha-studio.io",
+    watermark = settings.X_HANDLE if (hasattr(settings, "X_HANDLE") and settings.X_HANDLE) else "alpha-studio.io"
+    draw.text((W - 28, H - 21), watermark,
               font=f_brand, fill=ACCENT_COLOR, anchor="rm")
 
     buf = io.BytesIO()

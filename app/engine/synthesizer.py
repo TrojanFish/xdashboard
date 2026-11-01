@@ -213,5 +213,12 @@ Content snippet: {signal['selftext'][:700]}
         lang = _get_setting("content_language", "en")
         if lang == "zh":
             prompt += "\n\n### OUTPUT LANGUAGE REQUIREMENT\nYou MUST write ALL fields (hook_options, short_post, long_form_body, reply_sniper_text, visual_card_title, all CardMetric labels and values, x_search_query) entirely in Simplified Chinese (简体中文). The x_search_query should still use English keywords + X search syntax."
+
+        resp = self._generate_with_fallback(
+            contents=prompt,
+            schema_class=SynthesizedDraft,
+            candidate_models=FALLBACK_SYNTHESIS_MODELS,
+            temperature=0.6,
+        )
         draft_obj = SynthesizedDraft.model_validate_json(resp.text)
         return draft_obj.model_dump()
