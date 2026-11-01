@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-全网 6 大情报采集引擎连通性与数据获取测试脚本
+全网 7 大情报采集引擎连通性与数据获取测试脚本
 用于在 VPS / Docker 容器内直接执行，排查网络与数据链路
 """
 
@@ -23,11 +23,12 @@ from app.ingestors.huggingface import HuggingFaceIngestor
 from app.ingestors.commodities import CommoditiesEnergyIngestor
 from app.ingestors.macro import MacroStocksIngestor
 from app.ingestors.crypto import CryptoTrendingIngestor
+from app.ingestors.defillama import DeFiLlamaIngestor
 
 
 def run_all_tests():
     print("=" * 60)
-    print("🛰️ [Alpha Radar] 正在测试全网 6 大情报采集引擎连通性...")
+    print("🛰️ [Alpha Radar] 正在测试全网 7 大情报采集引擎连通性...")
     print("=" * 60)
 
     engines = [
@@ -37,6 +38,7 @@ def run_all_tests():
         ("🛢️ OilPrice 原油/黄金/能源", CommoditiesEnergyIngestor(), "fetch_top_signals"),
         ("📈 MarketWatch 美股/宏观", MacroStocksIngestor(), "fetch_top_signals"),
         ("🪙 CoinGecko 加密资本趋势", CryptoTrendingIngestor(), "fetch_top_signals"),
+        ("🦙 DeFiLlama 协议现金流", DeFiLlamaIngestor(), "fetch_top_signals"),
     ]
 
     total_signals = 0

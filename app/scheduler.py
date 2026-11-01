@@ -10,6 +10,7 @@ from app.ingestors.huggingface import HuggingFaceIngestor
 from app.ingestors.commodities import CommoditiesEnergyIngestor
 from app.ingestors.macro import MacroStocksIngestor
 from app.ingestors.crypto import CryptoTrendingIngestor
+from app.ingestors.defillama import DeFiLlamaIngestor
 from app.engine.synthesizer import SynthesisEngine
 
 _scan_lock = threading.Lock()
@@ -115,24 +116,37 @@ def execute_radar_cycle():
         except Exception as e:
             print(f"   ❌ 美股宏观 采集失败: {e}")
 
-        # 6. CoinGecko 链上流动性与趋势热榜 (CRYPTO_ALPHA 官方源)
+        # 6. DeFiLlama 全球顶级协议真实手续费与现金流 (CRYPTO_ALPHA 官方开放源)
+        _scan_state["message"] = f"正在扫描 DeFiLlama 协议真实手续费与现金流..."
+        try:
+            dl_ingestor = DeFiLlamaIngestor()
+            dl_signals = dl_ingestor.fetch_top_signals(max_signals=2)
+            all_signals.extend(dl_signals)
+            print(f"   [DeFiLlama 协议现金流] 筛选出 {len(dl_signals)} 个高现金流协议。")
+        except Exception as e:
+            print(f"   ❌ DeFiLlama 采集失败: {e}")
+
+        # 7. CoinGecko 链上趋势热榜 (CRYPTO_ALPHA 辅助补充)
         _scan_state["message"] = f"正在扫描 CoinGecko 全球加密资本趋势..."
         try:
-            crypto_signals = crypto_ingestor.fetch_top_signals(max_signals=2)
+            crypto_signals = crypto_ingestor.fetch_top_signals(max_signals=1)
             all_signals.extend(crypto_signals)
-            print(f"   [加密资本] 筛选出 {len(crypto_signals)} 条趋势信号。")
+            print(f"   [CoinGecko 趋势] 筛选出 {len(crypto_signals)} 条趋势信号。")
         except Exception as e:
-            print(f"   ❌ 加密资本 采集失败: {e}")
+            print(f"   ❌ CoinGecko 采集失败: {e}")
 
-        # 7. Reddit 社区热贴 (遇 403 自动平滑跳过，保证流水线不中断)
-        _scan_state["message"] = f"正在巡检 Reddit 社区深度讨论..."
-        try:
-            reddit_signals = reddit_ingestor.fetch_qualified_signals(max_signals=2)
-            all_signals.extend(reddit_signals)
-            if reddit_signals:
-                print(f"   [Reddit] 筛选出 {len(reddit_signals)} 条高斜率信号。")
-        except Exception as e:
-            print(f"   ❌ Reddit 采集失败: {e}")
+        # 8. Reddit 社区热贴 (默认安全跳过，仅在显式开启并配置住宅代理时触发)
+        if getattr(settings, "ENABLE_REDDIT_INGESTOR", False) and (settings.REDDIT_PROXY_URL or (settings.REDDIT_CLIENT_ID and settings.REDDIT_CLIENT_SECRET)):
+            _scan_state["message"] = f"正在巡检 Reddit 社区深度讨论..."
+            try:
+                reddit_signals = reddit_ingestor.fetch_qualified_signals(max_signals=2)
+                all_signals.extend(reddit_signals)
+                if reddit_signals:
+                    print(f"   [Reddit] 筛选出 {len(reddit_signals)} 条高斜率信号。")
+            except Exception as e:
+                print(f"   ❌ Reddit 采集失败: {e}")
+        else:
+            print("   ℹ️ [Reddit] 采集已默认安全跳过（避免机房 IP 403 阻断）。如需启用请在 .env 中设置 ENABLE_REDDIT_INGESTOR=1 并配置住宅代理。")
 
         _scan_state["signals_found"] = len(all_signals)
         _scan_state["total"] = len(all_signals)

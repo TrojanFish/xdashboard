@@ -174,6 +174,71 @@ class TestFixesAndStabilization(unittest.TestCase):
             self.assertIsNotNone(row)
             self.assertEqual(row["value"], "test_val")
 
+    # ── 7. DeFiLlama 协议现金流采集器测试 ────────────────────────────────
+    def test_defillama_ingestor(self):
+        """测试 DeFiLlama 官方开放数据清洗、美元格式化与 CRYPTO_ALPHA 信号提炼"""
+        from app.ingestors.defillama import DeFiLlamaIngestor
+
+        ingestor = DeFiLlamaIngestor()
+
+        # 1. 验证美元与财务数字格式化
+        self.assertEqual(ingestor._format_usd(1_500_000_000), "$1.50B")
+        self.assertEqual(ingestor._format_usd(23_450_000), "$23.45M")
+        self.assertEqual(ingestor._format_usd(85_200), "$85.2K")
+        self.assertEqual(ingestor._format_usd(0), "N/A")
+        self.assertEqual(ingestor._format_usd(None), "N/A")
+
+        # 2. 模拟 DeFiLlama API 响应并验证信号抽取逻辑
+        mock_payload = {
+            "protocols": [
+                {
+                    "name": "Tether",
+                    "category": "Stablecoin Issuer",
+                    "total24h": 5_000_000,
+                    "slug": "tether"
+                },
+                {
+                    "name": "Binance",
+                    "category": "CEX",
+                    "total24h": 8_000_000,
+                    "slug": "binance"
+                },
+                {
+                    "name": "Hyperliquid",
+                    "category": "Derivatives",
+                    "symbol": "HYPE",
+                    "total24h": 1_250_000,
+                    "total30d": 35_000_000,
+                    "change_1d": 12.5,
+                    "change_7d": 45.0,
+                    "chains": ["Arbitrum", "Hyperliquid"],
+                    "slug": "hyperliquid"
+                },
+                {
+                    "name": "MicroDEX",
+                    "category": "Dexs",
+                    "total24h": 500,  # 低于 $30k 阈值，应被过滤
+                    "slug": "micro-dex"
+                }
+            ]
+        }
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = mock_payload
+
+        with patch.object(ingestor.session, "get", return_value=mock_resp):
+            signals = ingestor.fetch_top_signals(max_signals=5)
+            self.assertEqual(len(signals), 1)
+            sig = signals[0]
+            self.assertEqual(sig["subreddit"], "defillama")
+            self.assertEqual(sig["category"], "CRYPTO_ALPHA")
+            self.assertIn("Hyperliquid", sig["title"])
+            self.assertIn("$1.25M", sig["title"])
+            self.assertEqual(sig["permalink"], "https://defillama.com/protocol/hyperliquid")
+            self.assertIn("HYPE", sig["flair"])
+            self.assertTrue(len(sig["top_comments"]) > 0)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -16,7 +16,8 @@ class Settings:
     TRIAGE_MODEL: str = os.getenv("TRIAGE_MODEL", "gemini-2.5-flash")
     SYNTHESIS_MODEL: str = os.getenv("SYNTHESIS_MODEL", "gemini-3.1-pro-preview")
 
-    # VPS 防 403 配置（支持住宅代理或浏览器已登录 Cookie）
+    # VPS 防 403 与 Reddit 开关配置（默认关闭防 403 阻塞；仅在显式配置住宅代理时开启）
+    ENABLE_REDDIT_INGESTOR: bool = os.getenv("ENABLE_REDDIT_INGESTOR", "0").lower() in ("1", "true", "yes")
     REDDIT_PROXY_URL: str = os.getenv("REDDIT_PROXY_URL", "")
     REDDIT_COOKIE: str = os.getenv("REDDIT_COOKIE", "")
     REDDIT_CLIENT_ID: str = os.getenv("REDDIT_CLIENT_ID", "")

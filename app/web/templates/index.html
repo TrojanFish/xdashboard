@@ -180,17 +180,17 @@
                 <button onclick="closeSourcesModal()" class="text-[#8C867D] hover:text-[#201E1C] text-sm font-mono">✕ 关闭</button>
             </div>
 
-            <!-- VPS 防 403 授权提示卡片 -->
+            <!-- VPS 防 403 / 引擎状态提示卡片 -->
             <div id="redditAuthNotice" class="bg-[#FFFBEB] border border-[#FDE68A] rounded-xl p-3 text-xs text-[#92400E] space-y-1">
                 <div class="flex items-center justify-between font-semibold">
                     <span class="flex items-center gap-1.5">
-                        <span id="redditStatusDot" class="w-2 h-2 rounded-full bg-[#D97706]"></span>
-                        <span id="redditStatusTitle">Reddit 海外 VPS 防 403 提示</span>
+                        <span id="redditStatusDot" class="w-2 h-2 rounded-full bg-[#059669]"></span>
+                        <span id="redditStatusTitle">🦙 DeFiLlama 官方免鉴权引擎已就绪</span>
                     </span>
-                    <a href="https://www.reddit.com/prefs/apps" target="_blank" class="underline hover:text-[#78350F]">免费获取 Script 凭据 ↗</a>
+                    <a href="https://defillama.com" target="_blank" class="underline hover:text-[#78350F]">DeFiLlama 终端 ↗</a>
                 </div>
                 <p class="text-[11px] leading-relaxed text-[#78350F]">
-                    若部署在海外云 VPS（机房 IP），匿名抓取会被 Reddit Cloudflare 拦截 (403)。在 <a href="https://www.reddit.com/prefs/apps" target="_blank" class="underline font-mono">reddit.com/prefs/apps</a> 免费创建 script 类型应用，将 <code>REDDIT_CLIENT_ID</code> 与 <code>REDDIT_CLIENT_SECRET</code> 写入 <code>.env</code> 即可永久豁免机房 IP 拦截。
+                    现已默认启用 <b>DeFiLlama</b> 官方链上现金流与 TVL 引擎（100% 官方公开、零机房 IP 拦截）。Reddit 采集源已解耦静音；如仍需启用 Reddit，请在 <code>.env</code> 中配置 <code>ENABLE_REDDIT_INGESTOR=1</code> 并补充官方 Script 凭据或代理。
                 </p>
             </div>
 
@@ -407,12 +407,17 @@ async function loadConfig() {
             const rDot = document.getElementById('redditStatusDot');
             const rTitle = document.getElementById('redditStatusTitle');
             if (rDot && rTitle) {
-                if (appConfig.has_reddit_auth) {
-                    rDot.className = "w-2 h-2 rounded-full bg-[#2E7D32]";
-                    rTitle.innerText = "Reddit 官方 API 已授权 (机房 IP 已豁免 403)";
+                if (appConfig.enable_reddit_ingestor) {
+                    if (appConfig.has_reddit_auth) {
+                        rDot.className = "w-2 h-2 rounded-full bg-[#2E7D32]";
+                        rTitle.innerText = "Reddit 官方 API 已启用且已授权 (机房 IP 已豁免 403)";
+                    } else {
+                        rDot.className = "w-2 h-2 rounded-full bg-[#D97706]";
+                        rTitle.innerText = "Reddit 处于公开匿名模式 (海外 VPS 需配置凭据防 403)";
+                    }
                 } else {
-                    rDot.className = "w-2 h-2 rounded-full bg-[#D97706]";
-                    rTitle.innerText = "Reddit 处于公开匿名模式 (海外 VPS 需配置凭据防 403)";
+                    rDot.className = "w-2 h-2 rounded-full bg-[#059669]";
+                    rTitle.innerText = "🦙 DeFiLlama 免封禁供给中 (Reddit 已解耦静音)";
                 }
             }
             // 今日发帖节奏面板
@@ -498,6 +503,7 @@ function renderFeedList() {
         const isSelected = d.post_id === currentId;
         const isGithub = d.category === 'GITHUB_TRENDING';
         const isHN = d.subreddit === 'hackernews';
+        const isLlama = d.subreddit === 'defillama';
         const isRaw = d.status === 'raw_unprocessed';
         
         let badgeColor = 'bg-[#FEF3E2] text-[#B45309] border-[#FDE68A]';
@@ -515,6 +521,11 @@ function renderFeedList() {
             subText = '🟠 Hacker News';
             footerPrefix = `<span>🟠 硅谷风向</span>`;
             frameworkColor = 'text-[#C2410C]';
+        } else if (isLlama) {
+            badgeColor = 'bg-[#ECFDF5] text-[#047857] border-[#A7F3D0]';
+            subText = '🦙 DeFiLlama';
+            footerPrefix = `<span>🦙 协议现金流</span>`;
+            frameworkColor = 'text-[#047857]';
         } else if (d.category === 'AI_DEV') {
             badgeColor = 'bg-[#EBF3FA] text-[#1E6091] border-[#D0E3F3]';
             subText = '🤖 r/' + d.subreddit;
@@ -547,14 +558,21 @@ function renderFeedList() {
             tierBadge = `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-[#FEF2F2] text-[#B91C1C] border border-[#FEE2E2]">🥊 争议圆桌</span>`;
         }
 
-        const metricsSnippet = isGithub
-            ? `<div class="flex items-center gap-1.5 text-[#553C9A] font-mono text-xs">
+        let metricsSnippet;
+        if (isGithub) {
+            metricsSnippet = `<div class="flex items-center gap-1.5 text-[#553C9A] font-mono text-xs">
                    <span>⭐ +${d.score} stars</span>
-               </div>`
-            : `<div class="flex items-center gap-2 text-[#7A746B] font-mono text-xs">
+               </div>`;
+        } else if (isLlama) {
+            metricsSnippet = `<div class="flex items-center gap-1.5 text-[#047857] font-mono text-xs">
+                   <span>🦙 真实费率 · 动量 ⚡ ${d.velocity}</span>
+               </div>`;
+        } else {
+            metricsSnippet = `<div class="flex items-center gap-2 text-[#7A746B] font-mono text-xs">
                    <span title="点赞/增长斜率">▲ ${d.score} · ⚡ ${d.velocity}/m</span>
                    <span title="评论争议比">💬 ${d.num_comments}</span>
                </div>`;
+        }
 
         return `
         <div onclick="selectDraft('${escapeHtml(d.post_id)}')" class="p-4 cursor-pointer transition hover:bg-[#FFFFFF]/70 ${isSelected ? 'bg-[#FFFFFF] border-l-4 border-l-[#CC5A2B] shadow-sm' : ''}">
@@ -623,6 +641,7 @@ function renderEditor() {
     if (!item) return;
     const isGithub = item.category === 'GITHUB_TRENDING';
     const isHN = item.subreddit === 'hackernews';
+    const isLlama = item.subreddit === 'defillama';
     const isRaw = item.status === 'raw_unprocessed';
     let sourceLabel = 'Reddit ↗';
     let sourceClass = 'text-[#CC5A2B]';
@@ -632,11 +651,14 @@ function renderEditor() {
     } else if (isHN) {
         sourceLabel = 'Hacker News ↗';
         sourceClass = 'text-[#C2410C]';
+    } else if (isLlama) {
+        sourceLabel = 'DeFiLlama ↗';
+        sourceClass = 'text-[#047857]';
     }
 
     const metricsSnippet = isGithub
         ? `⭐ +${item.score} stars today`
-        : (isHN ? `▲ ${item.score} points · 💬 ${item.num_comments} comments` : `⚡ 斜率: ${item.velocity}/m · 争议比: ${item.controversy} · 赞: ${item.score} · 评: ${item.num_comments}`);
+        : (isHN ? `▲ ${item.score} points · 💬 ${item.num_comments} comments` : (isLlama ? `🦙 链上真实手续费流 · 动量斜率: ⚡ ${item.velocity}` : `⚡ 斜率: ${item.velocity}/m · 争议比: ${item.controversy} · 赞: ${item.score} · 评: ${item.num_comments}`));
 
     // 分支 1：处于未二创的原始情报状态 (待手动二创模式)
     if (isRaw) {
@@ -895,7 +917,7 @@ ${escapeHtml(item.selftext || item.title || '（该项目为开源代码库或�
                                 <span class="w-2.5 h-2.5 rounded-full bg-[#5A9E6F]"></span>
                                 <span class="text-[11px] font-mono text-[#7A746B] ml-2 uppercase tracking-widest font-semibold">${escapeHtml(item.category)} // ${escapeHtml((item.card && item.card.type) || 'ALPHA')}</span>
                             </div>
-                            <span class="text-[11px] font-mono ${isGithub ? 'text-[#553C9A] bg-[#F3EFFB] border-[#DDD3F5]' : (isHN ? 'text-[#C2410C] bg-[#FFF4E5] border-[#FED7AA]' : 'text-[#CC5A2B] bg-[#FFF2ED] border-[#FCD9CC]')} border px-2 py-0.5 rounded font-semibold">${isGithub ? 'GITHUB ALPHA' : (isHN ? 'Y COMBINATOR / HN' : 'RESEARCH MEMO')}</span>
+                            <span class="text-[11px] font-mono ${isGithub ? 'text-[#553C9A] bg-[#F3EFFB] border-[#DDD3F5]' : (isHN ? 'text-[#C2410C] bg-[#FFF4E5] border-[#FED7AA]' : (isLlama ? 'text-[#047857] bg-[#ECFDF5] border-[#A7F3D0]' : 'text-[#CC5A2B] bg-[#FFF2ED] border-[#FCD9CC]'))} border px-2 py-0.5 rounded font-semibold">${isGithub ? 'GITHUB ALPHA' : (isHN ? 'Y COMBINATOR / HN' : (isLlama ? 'DEFILLAMA FEES & TVL' : 'RESEARCH MEMO'))}</span>
                         </div>
 
                         <div class="my-1.5 sm:my-2 shrink-0">
@@ -907,7 +929,7 @@ ${escapeHtml(item.selftext || item.title || '（该项目为开源代码库或�
                         </div>
 
                         <div class="flex items-center justify-between pt-2.5 mt-2 border-t border-[#E6E0D4] text-[9px] sm:text-[10px] font-mono text-[#8C867D] shrink-0">
-                            <span class="truncate mr-2">${isGithub ? 'SYNTHESIZED FROM GITHUB OPEN SOURCE ARCHITECTURES' : (isHN ? 'SYNTHESIZED FROM SILICON VALLEY PRACTITIONER DEBATES' : 'SYNTHESIZED FROM PRACTITIONER INSIGHTS')}</span>
+                            <span class="truncate mr-2">${isGithub ? 'SYNTHESIZED FROM GITHUB OPEN SOURCE ARCHITECTURES' : (isHN ? 'SYNTHESIZED FROM SILICON VALLEY PRACTITIONER DEBATES' : (isLlama ? 'SYNTHESIZED FROM DEFILLAMA VERIFIED ON-CHAIN FEES' : 'SYNTHESIZED FROM PRACTITIONER INSIGHTS'))}</span>
                             <span id="cardWatermark" contenteditable="true" class="text-[#CC5A2B] font-semibold outline-none shrink-0">${escapeHtml(appConfig.x_handle || '@YourHandle')}</span>
                         </div>
                     </div>

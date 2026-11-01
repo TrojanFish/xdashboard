@@ -268,14 +268,16 @@ def render_draft_card(post_id: str, username: str = Depends(verify_credentials))
     subreddit = row["subreddit"] or ""
     source_map = {
         "GITHUB_TRENDING": "⭐ GitHub Trending",
-        "AI_DEV": f"🤖 AI Dev",
+        "AI_DEV": "🤖 AI Dev",
         "MACRO_STOCKS": "📈 MarketWatch Macro",
         "COMMODITIES_ENERGY": "🛢️ OilPrice Energy",
-        "CRYPTO_ALPHA": "🪙 CoinGecko Crypto",
+        "CRYPTO_ALPHA": "🦙 DeFiLlama Alpha" if subreddit == "defillama" else "🪙 CoinGecko Crypto",
     }
     source_label = source_map.get(category, f"r/{subreddit}")
     if subreddit == "hackernews":
         source_label = "🟠 Hacker News"
+    elif subreddit == "defillama":
+        source_label = "🦙 DeFiLlama Fees & TVL"
 
     from app.engine.card_renderer import render_card
     png_bytes = render_card(
@@ -302,6 +304,7 @@ def get_config(username: str = Depends(verify_credentials)):
     return {
         "x_handle": settings.X_HANDLE,
         "has_gemini_key": bool(settings.GEMINI_API_KEY and settings.GEMINI_API_KEY != "your_gemini_api_key_here"),
+        "enable_reddit_ingestor": bool(settings.ENABLE_REDDIT_INGESTOR),
         "has_reddit_auth": bool((settings.REDDIT_CLIENT_ID and settings.REDDIT_CLIENT_SECRET) or settings.REDDIT_PROXY_URL),
         "has_telegram": bool(settings.TELEGRAM_BOT_TOKEN and settings.TELEGRAM_ADMIN_CHAT_ID),
         "telegram_channel": settings.TELEGRAM_CHANNEL_ID,
