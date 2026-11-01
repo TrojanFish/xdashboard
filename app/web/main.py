@@ -90,27 +90,68 @@ def verify_credentials(request: Request, alpha_session: Optional[str] = Cookie(d
     )
 
 
+_login_failures: Dict[str, list] = {}  # ip -> list of timestamps
+_LOGIN_MAX_FAILURES = 5
+_LOGIN_LOCKOUT_SECONDS = 900  # 15 分钟锁定
+
+
+def check_ip_rate_limit(client_ip: str):
+    now = time.time()
+    attempts = _login_failures.get(client_ip, [])
+    attempts = [t for t in attempts if now - t < _LOGIN_LOCKOUT_SECONDS]
+    _login_failures[client_ip] = attempts
+    if len(attempts) >= _LOGIN_MAX_FAILURES:
+        oldest = attempts[0]
+        remaining = int(_LOGIN_LOCKOUT_SECONDS - (now - oldest))
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"密码连续输错达 {_LOGIN_MAX_FAILURES} 次，系统已自动限制访问，请在 {remaining} 秒后再试。"
+        )
+
+
+def record_login_failure(client_ip: str):
+    now = time.time()
+    attempts = _login_failures.get(client_ip, [])
+    attempts.append(now)
+    _login_failures[client_ip] = attempts
+
+
+def clear_login_failure(client_ip: str):
+    _login_failures.pop(client_ip, None)
+
+
 class LoginRequest(BaseModel):
     username: str
     password: str
+    remember_me: Optional[bool] = True
 
 
 @app.post("/api/login")
-def login(payload: LoginRequest, response: Response):
-    """登录接口：校验密码并下发 HttpOnly 签名 Cookie"""
-    if payload.username != "admin" or payload.password != settings.STUDIO_PASSWORD:
+def login(payload: LoginRequest, request: Request, response: Response):
+    """登录接口：校验密码并下发 HttpOnly 签名 Cookie（含防时序攻击与防暴力破解）"""
+    client_ip = request.client.host if request.client else "unknown"
+    check_ip_rate_limit(client_ip)
+
+    username_ok = hmac.compare_digest(payload.username, "admin")
+    password_ok = hmac.compare_digest(payload.password, settings.STUDIO_PASSWORD)
+
+    if not (username_ok and password_ok):
+        record_login_failure(client_ip)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="密码错误，请检查 .env 中的 STUDIO_PASSWORD"
         )
+
+    clear_login_failure(client_ip)
     token = create_session_token(payload.username)
+    cookie_max_age = SESSION_MAX_AGE if payload.remember_me else None
     response.set_cookie(
         key=SESSION_COOKIE_NAME,
         value=token,
         httponly=True,
         samesite="lax",
         secure=settings.COOKIE_SECURE,
-        max_age=SESSION_MAX_AGE,
+        max_age=cookie_max_age,
     )
     return {"ok": True, "message": "登录成功"}
 
@@ -392,26 +433,45 @@ class DraftEdit(BaseModel):
     short_post: Optional[str] = None
     sniper_reply: str
     hooks: Optional[list] = None
+    card_title: Optional[str] = None
+    card_metrics: Optional[list] = None
 
 
 @app.post("/api/drafts/{post_id}/save")
 def save_draft(post_id: str, payload: DraftEdit, username: str = Depends(verify_credentials)):
     conn = get_conn()
     hooks_json = json.dumps(payload.hooks, ensure_ascii=False) if payload.hooks is not None else None
+
+    # 同步持久化视觉数据卡片的标题与指标修改
+    new_card_json = None
+    if payload.card_title is not None or payload.card_metrics is not None:
+        row = conn.execute("SELECT card_json FROM drafts WHERE post_id = ?", (post_id,)).fetchone()
+        current_card = {}
+        if row and row["card_json"]:
+            try:
+                current_card = json.loads(row["card_json"])
+            except Exception:
+                current_card = {}
+        if payload.card_title is not None:
+            current_card["title"] = payload.card_title
+        if payload.card_metrics is not None:
+            current_card["metrics"] = payload.card_metrics
+        new_card_json = json.dumps(current_card, ensure_ascii=False)
+
+    update_fields = ["long_post = ?", "sniper_reply = ?"]
+    params = [payload.long_post, payload.sniper_reply]
     if payload.short_post is not None:
-        if hooks_json is not None:
-            conn.execute("UPDATE drafts SET long_post = ?, short_post = ?, sniper_reply = ?, hooks_json = ? WHERE post_id = ?",
-                         (payload.long_post, payload.short_post, payload.sniper_reply, hooks_json, post_id))
-        else:
-            conn.execute("UPDATE drafts SET long_post = ?, short_post = ?, sniper_reply = ? WHERE post_id = ?",
-                         (payload.long_post, payload.short_post, payload.sniper_reply, post_id))
-    else:
-        if hooks_json is not None:
-            conn.execute("UPDATE drafts SET long_post = ?, sniper_reply = ?, hooks_json = ? WHERE post_id = ?",
-                         (payload.long_post, payload.sniper_reply, hooks_json, post_id))
-        else:
-            conn.execute("UPDATE drafts SET long_post = ?, sniper_reply = ? WHERE post_id = ?",
-                         (payload.long_post, payload.sniper_reply, post_id))
+        update_fields.append("short_post = ?")
+        params.append(payload.short_post)
+    if hooks_json is not None:
+        update_fields.append("hooks_json = ?")
+        params.append(hooks_json)
+    if new_card_json is not None:
+        update_fields.append("card_json = ?")
+        params.append(new_card_json)
+    params.append(post_id)
+
+    conn.execute(f"UPDATE drafts SET {', '.join(update_fields)} WHERE post_id = ?", params)
     conn.commit()
     conn.close()
     return {"ok": True}

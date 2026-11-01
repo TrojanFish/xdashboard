@@ -58,7 +58,9 @@ class HackerNewsIngestor:
         fin_matches = len(tokens.intersection(FINANCE_KEYWORDS))
 
         if fin_matches > ai_matches:
-            return "FINANCE"
+            if any(k in combined for k in ["crypto", "bitcoin", "ethereum", "defi", "web3", "token"]):
+                return "CRYPTO_ALPHA"
+            return "MACRO_STOCKS"
         return "AI_DEV"
 
     def fetch_top_signals(self, max_signals: int = 4) -> List[Dict[str, Any]]:

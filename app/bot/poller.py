@@ -1,8 +1,12 @@
+import hashlib
+import ipaddress
 import json
 import logging
 import re
+import socket
 import threading
 import time
+import urllib.parse
 from typing import Dict, Any, Optional
 import requests
 
@@ -199,8 +203,38 @@ class BotPoller:
         # 启动独立线程加工，不阻塞长轮询接收其他消息
         threading.Thread(target=self._async_curate_url, args=(chat_id, url), daemon=True).start()
 
+    @staticmethod
+    def _is_safe_external_url(url: str) -> bool:
+        """SSRF 防护校验：禁止解析私有/保留 IP、环回地址或云主机元数据地址"""
+        try:
+            parsed = urllib.parse.urlparse(url)
+            if parsed.scheme not in ("http", "https"):
+                return False
+            hostname = parsed.hostname
+            if not hostname:
+                return False
+            if hostname.lower() in ("localhost", "127.0.0.1", "0.0.0.0", "metadata.google.internal"):
+                return False
+            addr_info = socket.getaddrinfo(hostname, None)
+            for family, _, _, _, sockaddr in addr_info:
+                ip_str = sockaddr[0]
+                ip = ipaddress.ip_address(ip_str)
+                if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+                    return False
+            return True
+        except Exception:
+            return False
+
     def _async_curate_url(self, chat_id: int | str, url: str):
         try:
+            if not self._is_safe_external_url(url):
+                self.client.send_message(
+                    chat_id,
+                    "⚠️ <b>安全拦截</b>：该链接指向内网、环回或保留地址，禁止投喂。",
+                    reply_markup=build_main_menu_keyboard()
+                )
+                return
+
             # 1. 判断是否为 GitHub 链接
             m_gh = re.search(r'github\.com/([^/]+/[^/#?]+)', url)
             if m_gh:
@@ -225,16 +259,16 @@ class BotPoller:
             else:
                 # 通用网页爬取
                 headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-                resp = requests.get(url, headers=headers, timeout=12)
+                resp = requests.get(url, headers=headers, timeout=12, allow_redirects=True)
                 html_text = resp.text
                 clean_title = re.search(r'<title[^>]*>(.*?)</title>', html_text, re.IGNORECASE)
                 title = clean_title.group(1).strip() if clean_title else "External Article"
                 clean_body = re.sub(r'<[^>]+>', ' ', html_text)
                 clean_body = re.sub(r'\s+', ' ', clean_body).strip()[:3500]
 
-                clean_id = re.sub(r'[^a-zA-Z0-9]', '_', url[-30:])
+                url_hash = hashlib.md5(url.encode()).hexdigest()[:12]
                 sig = {
-                    "post_id": f"web_{clean_id}",
+                    "post_id": f"web_{url_hash}",
                     "subreddit": "web/article",
                     "category": "AI_DEV",
                     "title": title[:100],
