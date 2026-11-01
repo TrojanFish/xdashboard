@@ -4,7 +4,7 @@ services:
     container_name: alpha-studio
     restart: unless-stopped
     ports:
-      - "28828:28828"
+      - "${PORT:-28828}:${PORT:-28828}"
     env_file:
       - .env
     volumes:

@@ -1,6 +1,7 @@
 import json
 import os
 import sqlite3
+from contextlib import contextmanager
 from typing import List, Dict, Any, Optional
 from app.config import settings
 
@@ -15,6 +16,20 @@ def get_conn() -> sqlite3.Connection:
     conn.execute("PRAGMA busy_timeout = 10000;")
     conn.row_factory = sqlite3.Row
     return conn
+
+
+@contextmanager
+def get_db_session():
+    """安全数据库连接上下文管理器：自动 commit、异常 rollback、退出必定关闭连接"""
+    conn = get_conn()
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 def init_db():
